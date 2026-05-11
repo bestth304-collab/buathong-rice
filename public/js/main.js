@@ -168,6 +168,12 @@ function toggleCart() {
 
 // ─── Checkout ─────────────────────────────────────────────────────────────────
 function openCheckout() {
+  if (!currentUser) {
+    toggleCart();
+    showToast('🔒 กรุณาเข้าสู่ระบบก่อนสั่งซื้อ');
+    setTimeout(() => openAuthModal('login'), 300);
+    return;
+  }
   const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const shipping = total >= 500 ? 0 : 50;
 
