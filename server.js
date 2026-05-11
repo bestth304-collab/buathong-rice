@@ -103,22 +103,31 @@ app.post('/api/user/google', async (req, res) => {
   const { credential } = req.body;
   if (!credential) return res.status(400).json({ error: 'ไม่มี credential' });
   try {
-    // Decode without full verification for flexibility; in production add proper verify
-    const [, payloadB64] = credential.split('.');
-    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString());
+    // Decode JWT payload — use manual padding to support all Node.js versions
+    const payloadB64 = credential.split('.')[1];
+    if (!payloadB64) throw new Error('Invalid JWT format');
+    const padded = payloadB64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((payloadB64.length + 3) % 4);
+    const payload = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
     const { sub: googleId, name, email, picture } = payload;
-    if (!googleId) throw new Error('Invalid token');
+    if (!googleId) throw new Error('Missing sub claim');
 
     let user = db.getOne('SELECT * FROM users WHERE google_id = ?', [googleId]);
     if (!user && email) user = db.getOne('SELECT * FROM users WHERE email = ?', [email]);
+
     if (user) {
+      // Link google_id to existing account if not yet linked
       if (!user.google_id) db.run('UPDATE users SET google_id=?,avatar_url=? WHERE id=?', [googleId, picture || '', user.id]);
     } else {
-      db.run('INSERT INTO users (name,email,google_id,avatar_url) VALUES (?,?,?,?)', [name, email, googleId, picture || '']);
-      user = db.getOne('SELECT * FROM users WHERE id = ?', [db.lastId()]);
+      // Create new user — look up by google_id after INSERT (avoid lastId() which may be reset by save())
+      db.run('INSERT INTO users (name,email,google_id,avatar_url) VALUES (?,?,?,?)',
+        [name || 'ผู้ใช้ Google', email || null, googleId, picture || '']);
+      user = db.getOne('SELECT * FROM users WHERE google_id = ?', [googleId]);
     }
+
+    if (!user) throw new Error('User lookup failed after insert');
     res.json({ token: userToken(user), name: user.name, id: user.id });
   } catch (err) {
+    console.error('[Google Login]', err.message);
     res.status(401).json({ error: 'Google login ไม่สำเร็จ' });
   }
 });

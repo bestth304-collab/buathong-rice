@@ -150,14 +150,13 @@ function initGoogleSignIn(clientId) {
   google.accounts.id.initialize({
     client_id: clientId,
     callback: handleGoogleCallback,
+    auto_select: false,        // ปิด One-Tap auto sign-in (ป้องกัน callback ยิงเองตอน page load)
+    cancel_on_tap_outside: true,
+    itp_support: true,
   });
   const btn = document.getElementById('googleSignInBtn');
   if (btn) {
     google.accounts.id.renderButton(btn, { theme: 'outline', size: 'large', width: btn.offsetWidth || 340, text: 'signin_with', shape: 'rectangular', logo_alignment: 'left' });
-  }
-  const btn2 = document.getElementById('googleSignInBtn2');
-  if (btn2) {
-    google.accounts.id.renderButton(btn2, { theme: 'outline', size: 'large', width: btn2.offsetWidth || 340, text: 'signin_with', shape: 'rectangular', logo_alignment: 'left' });
   }
 }
 
