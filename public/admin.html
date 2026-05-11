@@ -63,6 +63,9 @@
           <span class="nav-icon">🛒</span> คำสั่งซื้อ
           <span class="nav-badge" id="pendingBadge" style="display:none">0</span>
         </a>
+        <a href="#" class="nav-item" onclick="showTab('users', this)">
+          <span class="nav-icon">👥</span> สมาชิก
+        </a>
       </nav>
       <div class="sidebar-footer">
         <div class="admin-info">
@@ -113,6 +116,13 @@
               <div class="stat-label">ยอดขายรวม</div>
             </div>
           </div>
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <div class="stat-val" id="statUsers">-</div>
+              <div class="stat-label">สมาชิกทั้งหมด</div>
+            </div>
+          </div>
         </div>
         <div class="card mt-24">
           <div class="card-header">
@@ -151,6 +161,41 @@
                 </tr>
               </thead>
               <tbody id="productsTableBody">
+                <tr><td colspan="7" class="loading">กำลังโหลด...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Tab -->
+      <div id="tab-users" class="tab-content">
+        <div class="page-header">
+          <div>
+            <h1>สมาชิก</h1>
+            <span class="page-sub">รายชื่อสมาชิกที่ลงทะเบียนในระบบ</span>
+          </div>
+          <button class="btn btn-sm btn-ghost" onclick="loadUsers()">🔄 รีเฟรช</button>
+        </div>
+        <div class="card">
+          <div class="table-toolbar">
+            <input type="text" id="userSearch" placeholder="ค้นหาสมาชิก..." oninput="filterUserTable()" class="table-search">
+            <span id="userCount" class="product-count"></span>
+          </div>
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ชื่อ</th>
+                  <th>เบอร์โทร</th>
+                  <th>อีเมล</th>
+                  <th>เข้าสู่ระบบด้วย</th>
+                  <th>จำนวนออเดอร์</th>
+                  <th>ยอดซื้อรวม</th>
+                  <th>สมัครเมื่อ</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
                 <tr><td colspan="7" class="loading">กำลังโหลด...</td></tr>
               </tbody>
             </table>

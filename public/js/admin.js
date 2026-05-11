@@ -2,8 +2,16 @@
 let token = localStorage.getItem('btAdminToken');
 let allProducts = [];
 let allOrders = [];
+let allUsers = [];
 let currentOrderFilter = 'all';
 let deleteTargetId = null;
+
+function fmtDate(str) {
+  if (!str) return '-';
+  const d = new Date(str.replace(' ', 'T'));
+  if (isNaN(d)) return str;
+  return d.toLocaleString('th-TH', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
 const STATUS_LABELS = {
   pending:   { label: 'รอดำเนินการ', cls: 'badge-warning' },
@@ -33,6 +41,7 @@ function showApp() {
   loadDashboard();
   loadProducts();
   loadOrders();
+  loadUsers();
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -109,13 +118,19 @@ async function loadDashboard() {
   document.getElementById('statOrders').textContent = data.totalOrders.toLocaleString();
   document.getElementById('statPending').textContent = data.pendingOrders.toLocaleString();
   document.getElementById('statRevenue').textContent = `฿${data.totalRevenue.toLocaleString()}`;
-  if (data.pendingOrders > 0) {
-    const badge = document.getElementById('pendingBadge');
-    badge.textContent = data.pendingOrders;
-    badge.style.display = 'inline-block';
-  }
+  document.getElementById('statUsers').textContent = data.totalUsers.toLocaleString();
+  const badge = document.getElementById('pendingBadge');
+  if (data.pendingOrders > 0) { badge.textContent = data.pendingOrders; badge.style.display = 'inline-block'; }
+  else badge.style.display = 'none';
   renderRecentOrders();
 }
+
+const PAY_LABELS = {
+  promptpay: '📱 พร้อมเพย์',
+  card: '💳 บัตร',
+  pending: '💵 ยังไม่ชำระ',
+};
+const PAY_STATUS = { paid: { label: 'ชำระแล้ว', cls: 'badge-success' }, pending: { label: 'รอชำระ', cls: 'badge-warning' } };
 
 function renderRecentOrders() {
   const el = document.getElementById('recentOrders');
@@ -127,7 +142,7 @@ function renderRecentOrders() {
     <div class="recent-order-item">
       <div class="recent-order-info">
         <div class="recent-order-name">${o.customer_name} · ${o.order_number}</div>
-        <div class="recent-order-meta">${o.created_at} · ${o.items?.length || 0} รายการ</div>
+        <div class="recent-order-meta">${fmtDate(o.created_at)} · ${o.items?.length || 0} รายการ</div>
       </div>
       <span class="badge ${st.cls}">${st.label}</span>
       <span class="recent-order-amt">฿${o.total_amount.toLocaleString()}</span>
@@ -297,15 +312,20 @@ function renderOrders(list) {
   }
   container.innerHTML = list.map(o => {
     const st = STATUS_LABELS[o.status] || STATUS_LABELS.pending;
+    const ps = PAY_STATUS[o.payment_status] || PAY_STATUS.pending;
     const items = o.items || [];
+    const payLabel = PAY_LABELS[o.payment_method] || PAY_LABELS.pending;
     return `
     <div class="order-card">
       <div class="order-card-header">
         <div>
           <div class="order-num">🛒 ${o.order_number}</div>
-          <div class="order-date">📅 ${o.created_at}</div>
+          <div class="order-date">📅 ${fmtDate(o.created_at)}</div>
         </div>
-        <span class="badge ${st.cls}">${st.label}</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+          <span class="badge ${ps.cls}">${payLabel} · ${ps.label}</span>
+          <span class="badge ${st.cls}">${st.label}</span>
+        </div>
       </div>
       <div class="order-card-body">
         <div class="order-customer">
@@ -342,6 +362,44 @@ async function updateOrderStatus(id, status) {
     showAdminToast('✅ อัพเดทสถานะเรียบร้อย');
     loadDashboard();
   }
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  const res = await apiFetch('/api/admin/users');
+  allUsers = await res.json();
+  renderUserTable(allUsers);
+}
+
+function renderUserTable(list) {
+  const tbody = document.getElementById('usersTableBody');
+  document.getElementById('userCount').textContent = `${list.length} คน`;
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="7" class="loading">ไม่พบสมาชิก</td></tr>'; return; }
+  tbody.innerHTML = list.map(u => {
+    const methods = [
+      u.phone ? '📱 โทรศัพท์' : '',
+      u.has_google ? '🔵 Google' : '',
+      u.has_facebook ? '🔷 Facebook' : '',
+    ].filter(Boolean).join(', ') || '-';
+    return `<tr>
+      <td><strong>${u.name}</strong></td>
+      <td>${u.phone || '-'}</td>
+      <td style="font-size:13px">${u.email || '-'}</td>
+      <td style="font-size:12px">${methods}</td>
+      <td style="text-align:center">${u.order_count}</td>
+      <td><strong>฿${Number(u.total_spent).toLocaleString()}</strong></td>
+      <td style="font-size:12px;color:#888">${fmtDate(u.created_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterUserTable() {
+  const q = document.getElementById('userSearch').value.toLowerCase();
+  renderUserTable(allUsers.filter(u =>
+    (u.name || '').toLowerCase().includes(q) ||
+    (u.phone || '').includes(q) ||
+    (u.email || '').toLowerCase().includes(q)
+  ));
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────

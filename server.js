@@ -270,6 +270,22 @@ app.put('/api/orders/:id/payment', optionalUser, (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Users (admin) ───────────────────────────────────────────────────────────
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  const users = db.getAll(`
+    SELECT u.id, u.name, u.phone, u.email, u.avatar_url, u.created_at,
+      (u.google_id IS NOT NULL) as has_google,
+      (u.facebook_id IS NOT NULL) as has_facebook,
+      COUNT(o.id) as order_count,
+      IFNULL(SUM(o.total_amount), 0) as total_spent
+    FROM users u
+    LEFT JOIN orders o ON o.user_id = u.id AND o.status != 'cancelled'
+    GROUP BY u.id
+    ORDER BY u.id DESC
+  `, []);
+  res.json(users);
+});
+
 // ─── Orders (admin) ───────────────────────────────────────────────────────────
 app.get('/api/admin/orders', requireAdmin, (req, res) => {
   const orders = db.getAll('SELECT * FROM orders ORDER BY id DESC');

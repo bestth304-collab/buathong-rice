@@ -344,6 +344,13 @@ async function deleteAddress(id) {
 }
 
 // ─── Order History ────────────────────────────────────────────────────────────
+function fmtDate(str) {
+  if (!str) return '-';
+  const d = new Date(str.replace(' ', 'T'));
+  if (isNaN(d)) return str;
+  return d.toLocaleString('th-TH', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 const ORDER_STATUS = {
   pending: { label: 'รอดำเนินการ', cls: 'badge-warning' },
   confirmed: { label: 'ยืนยันแล้ว', cls: 'badge-info' },
@@ -362,7 +369,7 @@ function renderOrderHistory() {
       <div class="history-header">
         <div>
           <span class="history-num">${o.order_number}</span>
-          <span class="history-date">${o.created_at}</span>
+          <span class="history-date">${fmtDate(o.created_at)}</span>
         </div>
         <span class="badge ${st.cls}">${st.label}</span>
       </div>
