@@ -36,7 +36,6 @@
             <span class="user-nav-icon">👤</span>
             <span id="navUserName">ผู้ใช้</span>
           </button>
-          <button class="user-nav-logout" onclick="doLogout()" title="ออกจากระบบ">↩</button>
         </div>
         <button class="cart-btn" onclick="toggleCart()">
           <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -227,10 +226,18 @@
     </div>
   </div>
 
-  <!-- ═══ Profile Modal ═══ -->
+  <!-- ═══ Profile Modal (full-page) ═══ -->
   <div class="modal-overlay" id="profileModal">
     <div class="modal modal-profile">
-      <div class="modal-header"><h3>👤 บัญชีของฉัน</h3><button onclick="closeProfileModal()" class="cart-close">✕</button></div>
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="profile-page-back" onclick="closeProfileModal()" title="กลับ">←</button>
+          <h3>👤 บัญชีของฉัน</h3>
+        </div>
+        <button class="profile-logout-btn" onclick="doLogout()">
+          🚪 ออกจากระบบ
+        </button>
+      </div>
       <div class="modal-body">
         <div class="profile-tabs">
           <button id="ptab-info" class="profile-tab active" onclick="showProfileTab('info')">ข้อมูลส่วนตัว</button>
