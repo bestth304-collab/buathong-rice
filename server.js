@@ -91,11 +91,11 @@ app.post('/api/user/register', (req, res) => {
 });
 
 app.post('/api/user/login', (req, res) => {
-  const { phone, password } = req.body;
-  if (!phone || !password) return res.status(400).json({ error: 'กรุณากรอกข้อมูล' });
-  const user = db.getOne('SELECT * FROM users WHERE phone = ?', [phone]);
+  const { phone: identifier, password } = req.body;
+  if (!identifier || !password) return res.status(400).json({ error: 'กรุณากรอกข้อมูล' });
+  const user = db.getOne('SELECT * FROM users WHERE email = ? OR phone = ?', [identifier, identifier]);
   if (!user || !user.password || !bcrypt.compareSync(password, user.password))
-    return res.status(401).json({ error: 'เบอร์โทรหรือรหัสผ่านไม่ถูกต้อง' });
+    return res.status(401).json({ error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
   res.json({ token: userToken(user), name: user.name, id: user.id });
 });
 
