@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>บัวทองไรซ์ - ข้าวสารคุณภาพดี ส่งตรงจากนา</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar" id="navbar">
+    <div class="container nav-inner">
+      <a href="/" class="logo">
+        <span class="logo-icon">🌾</span>
+        <div>
+          <span class="logo-th">บัวทองไรซ์</span>
+          <span class="logo-en">BUATHONG RICE CO., LTD.</span>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="#products">สินค้า</a>
+        <a href="#about">เกี่ยวกับเรา</a>
+        <a href="#contact">ติดต่อ</a>
+      </div>
+      <button class="cart-btn" onclick="toggleCart()">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+        ตะกร้า
+        <span class="cart-count" id="cartCount">0</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="container hero-content">
+      <div class="hero-badge">🏆 คุณภาพระดับพรีเมียม</div>
+      <h1>ข้าวสารคุณภาพดี<br><span class="highlight">ส่งตรงจากนา</span></h1>
+      <p>บัวทองไรซ์ คัดสรรข้าวคุณภาพดีที่สุดจากทุ่งนาทั่วประเทศไทย<br>รับประกันความสด หอม นุ่ม ทุกเมล็ด</p>
+      <div class="hero-actions">
+        <a href="#products" class="btn btn-primary">ดูสินค้าทั้งหมด</a>
+        <a href="#about" class="btn btn-outline">เรียนรู้เพิ่มเติม</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><span class="stat-num">10+</span><span>ปีประสบการณ์</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">50,000+</span><span>ลูกค้าทั่วประเทศ</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">100%</span><span>ข้าวแท้คุณภาพดี</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="container features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🌿</div>
+        <h3>ปลอดภัย ได้มาตรฐาน</h3>
+        <p>ผ่านการตรวจสอบคุณภาพและได้รับมาตรฐาน GMP จากกระทรวงสาธารณสุข</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🚚</div>
+        <h3>จัดส่งรวดเร็ว</h3>
+        <p>บริการจัดส่งทั่วประเทศ ภายใน 1-3 วัน ส่งฟรีเมื่อซื้อครบ 500 บาท</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💯</div>
+        <h3>รับประกันคุณภาพ</h3>
+        <p>หากไม่พอใจยินดีคืนเงิน 100% ภายใน 7 วัน</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📦</div>
+        <h3>บรรจุภัณฑ์แน่นหนา</h3>
+        <p>บรรจุภัณฑ์คุณภาพสูง ป้องกันความชื้นและแมลง รักษาความสดของข้าว</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Products -->
+  <section class="products-section" id="products">
+    <div class="container">
+      <div class="section-header">
+        <h2>สินค้าของเรา</h2>
+        <p>คัดสรรข้าวคุณภาพดีจากแหล่งผลิตชั้นนำทั่วประเทศ</p>
+      </div>
+      <div class="category-tabs" id="categoryTabs">
+        <button class="cat-btn active" data-cat="all">ทั้งหมด</button>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="ค้นหาสินค้า..." oninput="searchProducts()">
+        <svg width="18" height="18" fill="none" stroke="#999" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </div>
+      <div class="products-grid" id="productsGrid">
+        <div class="loading">กำลังโหลดสินค้า...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section class="about-section" id="about">
+    <div class="container about-grid">
+      <div class="about-img">
+        <img src="https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=600" alt="บัวทองไรซ์" loading="lazy">
+        <div class="about-badge">ก่อตั้งปี 2557</div>
+      </div>
+      <div class="about-content">
+        <div class="section-badge">เกี่ยวกับเรา</div>
+        <h2>บัวทองไรซ์จำกัด</h2>
+        <p>เราเป็นผู้ประกอบการข้าวสารคุณภาพดีที่มีประสบการณ์มากกว่า 10 ปี มุ่งมั่นในการนำข้าวคุณภาพดีจากแหล่งผลิตชั้นนำทั่วประเทศมาสู่มือคุณ</p>
+        <p>ด้วยกระบวนการผลิตที่ได้มาตรฐาน และการควบคุมคุณภาพอย่างเข้มงวด ทำให้ข้าวบัวทองไรซ์มีความสด หอม และอร่อยทุกเมล็ด</p>
+        <div class="about-points">
+          <div class="point">✅ คัดเกรดพิเศษจากแหล่งผลิตโดยตรง</div>
+          <div class="point">✅ กระบวนการสีข้าวด้วยเทคโนโลยีทันสมัย</div>
+          <div class="point">✅ ส่งตรงถึงบ้านทั่วประเทศ</div>
+          <div class="point">✅ รับประกันคุณภาพทุกถุง</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section class="contact-section" id="contact">
+    <div class="container">
+      <div class="section-header">
+        <h2>ติดต่อเรา</h2>
+        <p>ยินดีให้บริการทุกวัน จันทร์ - เสาร์ 08:00 - 17:00 น.</p>
+      </div>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="contact-icon">📞</div>
+          <h3>โทรศัพท์</h3>
+          <p>02-xxx-xxxx<br>081-xxx-xxxx</p>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon">📧</div>
+          <h3>อีเมล</h3>
+          <p>info@buathongrice.com</p>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon">📍</div>
+          <h3>ที่อยู่</h3>
+          <p>123 ถ.เจริญกรุง แขวงบางรัก<br>เขตบางรัก กรุงเทพฯ 10500</p>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon">💬</div>
+          <h3>Line Official</h3>
+          <p>@buathongrice</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-logo">
+        <span>🌾</span>
+        <div>
+          <div class="footer-name">บัวทองไรซ์จำกัด</div>
+          <div class="footer-slogan">ข้าวดี ราคาดี ส่งตรงถึงมือคุณ</div>
+        </div>
+      </div>
+      <div class="footer-copy">© 2567 บัวทองไรซ์จำกัด สงวนลิขสิทธิ์ทุกประการ</div>
+    </div>
+  </footer>
+
+  <!-- Cart Sidebar -->
+  <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+  <div class="cart-sidebar" id="cartSidebar">
+    <div class="cart-header">
+      <h3>🛒 ตะกร้าสินค้า</h3>
+      <button onclick="toggleCart()" class="cart-close">✕</button>
+    </div>
+    <div class="cart-body" id="cartBody">
+      <div class="cart-empty">ยังไม่มีสินค้าในตะกร้า</div>
+    </div>
+    <div class="cart-footer" id="cartFooter" style="display:none">
+      <div class="cart-total">
+        <span>รวมทั้งหมด</span>
+        <span id="cartTotal">฿0</span>
+      </div>
+      <div class="free-shipping-msg" id="freeShippingMsg"></div>
+      <button class="btn btn-primary btn-full" onclick="openCheckout()">สั่งซื้อเลย</button>
+    </div>
+  </div>
+
+  <!-- Checkout Modal -->
+  <div class="modal-overlay" id="checkoutOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📋 กรอกข้อมูลการสั่งซื้อ</h3>
+        <button onclick="closeCheckout()" class="cart-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="order-summary" id="orderSummary"></div>
+        <form id="checkoutForm" onsubmit="submitOrder(event)">
+          <div class="form-group">
+            <label>ชื่อ-นามสกุล *</label>
+            <input type="text" id="custName" placeholder="กรอกชื่อ-นามสกุล" required>
+          </div>
+          <div class="form-group">
+            <label>เบอร์โทรศัพท์ *</label>
+            <input type="tel" id="custPhone" placeholder="0xx-xxx-xxxx" required>
+          </div>
+          <div class="form-group">
+            <label>ที่อยู่จัดส่ง *</label>
+            <textarea id="custAddress" placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" rows="3" required></textarea>
+          </div>
+          <div class="form-group">
+            <label>หมายเหตุ</label>
+            <input type="text" id="custNote" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)">
+          </div>
+          <div class="checkout-total">
+            <div class="checkout-row"><span>ยอดรวมสินค้า</span><span id="checkoutSubtotal">฿0</span></div>
+            <div class="checkout-row"><span>ค่าจัดส่ง</span><span id="checkoutShipping">฿50</span></div>
+            <div class="checkout-row total-row"><span>ยอดชำระทั้งหมด</span><span id="checkoutTotal">฿0</span></div>
+          </div>
+          <div class="payment-note">
+            <strong>💳 การชำระเงิน:</strong> ชำระเงินปลายทาง หรือโอนเงินผ่านบัญชีธนาคาร<br>
+            ทีมงานจะติดต่อกลับเพื่อยืนยันคำสั่งซื้อภายใน 30 นาที
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="submitBtn">ยืนยันการสั่งซื้อ</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal-overlay" id="successOverlay">
+    <div class="modal modal-sm">
+      <div class="success-content">
+        <div class="success-icon">✅</div>
+        <h3>สั่งซื้อสำเร็จ!</h3>
+        <p id="successMsg"></p>
+        <button class="btn btn-primary" onclick="closeSuccess()">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>

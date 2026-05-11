@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: buathong-rice
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_PATH
+        value: /data/buathong.db
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
