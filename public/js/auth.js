@@ -5,7 +5,28 @@ let appConfig = {};
 async function loadConfig() {
   const res = await fetch('/api/config');
   appConfig = await res.json();
-  if (appConfig.googleClientId) initGoogleSignIn(appConfig.googleClientId);
+
+  // Google Sign-In
+  if (appConfig.hasGoogle && appConfig.googleClientId) {
+    // wait for GIS script to load
+    if (window.google) initGoogleSignIn(appConfig.googleClientId);
+    else window.addEventListener('load', () => initGoogleSignIn(appConfig.googleClientId));
+  } else {
+    // Hide Google button, show "ต้องตั้งค่า" notice
+    document.querySelectorAll('.google-btn-wrap').forEach(el => {
+      el.innerHTML = '<button class="oauth-unavailable" onclick="showOAuthHelp(\'google\')" type="button">🔵 Sign in with Google <span class="oauth-tag">ต้องตั้งค่า</span></button>';
+    });
+  }
+
+  // Facebook Login
+  if (appConfig.hasFacebook && appConfig.facebookAppId) {
+    initFacebook(appConfig.facebookAppId);
+  } else {
+    document.querySelectorAll('.fb-login-btn').forEach(el => {
+      el.onclick = () => showOAuthHelp('facebook');
+      el.innerHTML = el.innerHTML + ' <span class="oauth-tag">ต้องตั้งค่า</span>';
+    });
+  }
 }
 
 function getToken() { return localStorage.getItem('btUserToken'); }
@@ -170,8 +191,17 @@ function initFacebook(appId) {
   }(document, 'script', 'facebook-jssdk'));
 }
 
+function showOAuthHelp(provider) {
+  const msgs = {
+    google: '🔵 Google Sign-In\n\nต้องตั้งค่า GOOGLE_CLIENT_ID ใน Render:\n1. ไปที่ console.cloud.google.com\n2. สร้าง OAuth 2.0 Client ID\n3. เพิ่ม buathong-rice.onrender.com เป็น Authorized domain\n4. Copy Client ID → ใส่ใน Render Environment Variables',
+    facebook: '🔷 Facebook Login\n\nต้องตั้งค่า FACEBOOK_APP_ID ใน Render:\n1. ไปที่ developers.facebook.com\n2. สร้าง App ใหม่ → เลือก Consumer\n3. เพิ่ม Facebook Login product\n4. ใส่ buathong-rice.onrender.com ใน Valid OAuth Redirect URIs\n5. Copy App ID → ใส่ใน Render Environment Variables',
+  };
+  alert(msgs[provider] || 'ต้องตั้งค่าก่อนใช้งาน');
+}
+
 async function doFacebookLogin() {
-  if (!window.FB) { showToast('❌ Facebook SDK ยังไม่พร้อม'); return; }
+  if (!appConfig.hasFacebook) { showOAuthHelp('facebook'); return; }
+  if (!window.FB) { showToast('⏳ Facebook SDK กำลังโหลด กรุณารอสักครู่...'); return; }
   FB.login(async (response) => {
     if (response.authResponse) {
       FB.api('/me', { fields: 'name,email,picture' }, async (user) => {

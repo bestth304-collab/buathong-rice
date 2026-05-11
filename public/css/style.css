@@ -390,6 +390,17 @@ a { text-decoration: none; color: inherit; }
   font-size: 15px; font-weight: 600; cursor: pointer; transition: background .2s;
 }
 .fb-login-btn:hover { background: #166fe5; }
+.oauth-unavailable {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 11px 20px; background: #f5f5f5; color: #999;
+  border: 2px dashed #ddd; border-radius: 8px; font-family: 'Sarabun', sans-serif;
+  font-size: 15px; font-weight: 600; cursor: pointer; transition: all .2s;
+}
+.oauth-unavailable:hover { background: #eee; border-color: #ccc; }
+.oauth-tag {
+  background: #fcd34d; color: #92400e; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 50px; margin-left: 4px;
+}
 .auth-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .auth-divider span { font-size: 13px; color: var(--text-light); white-space: nowrap; }

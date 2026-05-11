@@ -10,6 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'buathong-rice-secret-2024';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || '';
 const PROMPTPAY_ID = process.env.PROMPTPAY_ID || '0812345678';
 const OMISE_SECRET = process.env.OMISE_SECRET_KEY || '';
 const OMISE_PUBLIC = process.env.OMISE_PUBLIC_KEY || '';
@@ -55,9 +56,12 @@ function userToken(user) {
 app.get('/api/config', (req, res) => {
   res.json({
     googleClientId: GOOGLE_CLIENT_ID,
+    facebookAppId: FACEBOOK_APP_ID,
     promptpayId: PROMPTPAY_ID,
     omisePublicKey: OMISE_PUBLIC,
     hasOmise: !!OMISE_PUBLIC,
+    hasGoogle: !!GOOGLE_CLIENT_ID,
+    hasFacebook: !!FACEBOOK_APP_ID,
   });
 });
 
