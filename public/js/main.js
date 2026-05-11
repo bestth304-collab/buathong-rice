@@ -40,10 +40,12 @@ async function loadProducts(search = '') {
 function renderProducts(list) {
   const grid = document.getElementById('productsGrid');
   if (!list.length) { grid.innerHTML = '<div class="no-products">😕 ไม่พบสินค้าที่ค้นหา</div>'; return; }
+  const wishIds = new Set((currentUser?.wishlist || []).map(w => w.id));
   grid.innerHTML = list.map(p => {
     const cartItem = cart.find(c => c.id === p.id);
     const qty = cartItem ? cartItem.qty : 1;
     const out = p.stock === 0;
+    const wished = wishIds.has(p.id);
     return `
     <div class="product-card" id="product-${p.id}">
       <div class="product-img">
@@ -51,6 +53,8 @@ function renderProducts(list) {
              alt="${p.name}" loading="lazy"
              onerror="this.src='https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=400'">
         <div class="product-badge ${out ? 'out' : ''}">${out ? 'สินค้าหมด' : 'มีสินค้า'}</div>
+        <button class="wish-btn ${wished ? 'wished' : ''}" data-wish-id="${p.id}"
+          onclick="toggleWishlist(${p.id})" title="${wished ? 'เอาออกจากสินค้าที่ถูกใจ' : 'เพิ่มในสินค้าที่ถูกใจ'}">♥</button>
       </div>
       <div class="product-body">
         <div class="product-cat">${p.category}</div>

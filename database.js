@@ -75,6 +75,12 @@ async function init() {
       username TEXT UNIQUE NOT NULL, password TEXT NOT NULL,
       name TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now','localtime'))
     );
+    CREATE TABLE IF NOT EXISTS user_wishlist (
+      user_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      PRIMARY KEY (user_id, product_id)
+    );
   `);
 
   // migrate: add columns if missing

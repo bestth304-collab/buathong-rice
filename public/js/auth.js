@@ -235,26 +235,72 @@ function doLogout() {
 function openProfileModal() {
   if (!currentUser) { openAuthModal('login'); return; }
   document.getElementById('profileModal').classList.add('open');
-  showProfileTab('info');
+  showProfileSection('info');
   renderProfile();
 }
 
 function closeProfileModal() { document.getElementById('profileModal').classList.remove('open'); }
 
-function showProfileTab(tab) {
-  ['info','addresses','history'].forEach(t => {
-    document.getElementById(`ptab-${t}`).classList.toggle('active', t === tab);
-    document.getElementById(`ppanel-${t}`).style.display = t === tab ? 'block' : 'none';
+function showProfileSection(sec) {
+  const sections = ['info','edit','address','payment','orders','wishlist'];
+  sections.forEach(s => {
+    const el = document.getElementById(`psec-${s}`);
+    if (el) el.style.display = s === sec ? 'block' : 'none';
   });
+  // sidebar active state (map edit→info for active highlight)
+  const navKey = sec === 'edit' ? 'info' : sec;
+  document.querySelectorAll('.profile-nav-item').forEach(b => b.classList.remove('active'));
+  const active = document.getElementById(`pnav-${navKey}`);
+  if (active) active.classList.add('active');
+
+  if (sec === 'orders') renderOrderHistory();
+  if (sec === 'wishlist') renderWishlist();
+  if (sec === 'payment') renderPaymentHistory();
 }
 
 async function renderProfile() {
   if (!currentUser) return;
+
+  // Sidebar
+  document.getElementById('sidebarName').textContent = currentUser.name || '-';
+  document.getElementById('sidebarPhone').textContent = currentUser.phone || currentUser.email || '-';
+  const avatarImg = document.getElementById('profileAvatarImg');
+  const avatarInit = document.getElementById('profileAvatarInitial');
+  if (currentUser.avatar_url) {
+    avatarImg.src = currentUser.avatar_url; avatarImg.style.display = 'block'; avatarInit.style.display = 'none';
+  } else {
+    avatarImg.style.display = 'none'; avatarInit.style.display = 'flex';
+    avatarInit.textContent = (currentUser.name || '?')[0].toUpperCase();
+  }
+
+  // Info section
+  document.getElementById('infoName').textContent = currentUser.name || '-';
+  document.getElementById('infoEmail').textContent = currentUser.email || '-';
+  document.getElementById('infoPhone').textContent = currentUser.phone || '-';
+  document.getElementById('infoSince').textContent = fmtDate(currentUser.created_at);
+
+  // Edit form
   document.getElementById('profileName').value = currentUser.name || '';
   document.getElementById('profileEmail').value = currentUser.email || '';
   document.getElementById('profilePhone').textContent = currentUser.phone || '-';
+
+  // Stats
+  const s = currentUser.stats || {};
+  document.getElementById('statDelivered').textContent = s.delivered || 0;
+  document.getElementById('statShipping').textContent = s.shipping || 0;
+  document.getElementById('statPending').textContent = s.pending || 0;
+  document.getElementById('statUnpaid').textContent = s.unpaid || 0;
+
+  // Badges
+  const wl = currentUser.wishlist || [];
+  const wbadge = document.getElementById('pnav-wishlist-badge');
+  wbadge.textContent = wl.length; wbadge.style.display = wl.length ? 'inline-flex' : 'none';
+
+  const pendingOrders = (currentUser.orders || []).filter(o => o.status === 'pending' || o.status === 'confirmed').length;
+  const obadge = document.getElementById('pnav-orders-badge');
+  obadge.textContent = pendingOrders; obadge.style.display = pendingOrders ? 'inline-flex' : 'none';
+
   renderAddresses();
-  renderOrderHistory();
 }
 
 async function saveProfile(e) {
@@ -341,6 +387,66 @@ async function deleteAddress(id) {
   await checkUserAuth();
   renderAddresses();
   showToast('🗑 ลบที่อยู่แล้ว');
+}
+
+// ─── Wishlist ─────────────────────────────────────────────────────────────────
+function renderWishlist() {
+  const items = currentUser?.wishlist || [];
+  const el = document.getElementById('wishlistGrid');
+  if (!el) return;
+  if (!items.length) { el.innerHTML = '<div class="empty-state">❤️ ยังไม่มีสินค้าที่ถูกใจ<br><small>กดปุ่ม ❤ บนสินค้าที่สนใจ</small></div>'; return; }
+  el.innerHTML = items.map(p => `
+    <div class="wishlist-card">
+      <img src="${p.image_url || 'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=300'}" alt="${p.name}"
+           onerror="this.src='https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=300'">
+      <div class="wishlist-card-body">
+        <div class="wishlist-cat">${p.category}</div>
+        <div class="wishlist-name">${p.name}</div>
+        <div class="wishlist-price">฿${p.price.toLocaleString()} / ${p.unit}</div>
+      </div>
+      <div class="wishlist-card-footer">
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="closeProfileModal();setTimeout(()=>document.getElementById('products').scrollIntoView({behavior:'smooth'}),200)">ดูสินค้า</button>
+        <button class="btn btn-danger btn-sm" onclick="toggleWishlist(${p.id},true)">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+async function toggleWishlist(productId, forceRemove = false) {
+  const token = getToken();
+  if (!token) { openAuthModal('login'); return; }
+  const inList = currentUser?.wishlist?.some(w => w.id === productId);
+  const remove = forceRemove || inList;
+  const method = remove ? 'DELETE' : 'POST';
+  await fetch(`/api/user/wishlist/${productId}`, { method, headers: authHeaders() });
+  await checkUserAuth();
+  renderProfile();
+  // refresh heart button state on product cards
+  document.querySelectorAll(`[data-wish-id="${productId}"]`).forEach(btn => {
+    const nowIn = !remove;
+    btn.classList.toggle('wished', nowIn);
+    btn.title = nowIn ? 'เอาออกจากสินค้าที่ถูกใจ' : 'เพิ่มในสินค้าที่ถูกใจ';
+  });
+  showToast(remove ? '💔 นำออกจากสินค้าที่ถูกใจแล้ว' : '❤️ เพิ่มในสินค้าที่ถูกใจแล้ว');
+}
+
+// ─── Payment History ──────────────────────────────────────────────────────────
+function renderPaymentHistory() {
+  const orders = (currentUser?.orders || []).filter(o => o.payment_status === 'paid');
+  const el = document.getElementById('paymentHistoryList');
+  if (!el) return;
+  if (!orders.length) { el.innerHTML = '<div class="empty-state">ยังไม่มีประวัติการชำระเงิน</div>'; return; }
+  const PAY = { promptpay: '📱 พร้อมเพย์', card: '💳 บัตรเครดิต' };
+  el.innerHTML = orders.map(o => `
+    <div class="history-card">
+      <div class="history-header">
+        <div><span class="history-num">${o.order_number}</span><span class="history-date">${fmtDate(o.created_at)}</span></div>
+        <span class="badge badge-success">ชำระแล้ว</span>
+      </div>
+      <div class="history-footer">
+        <span>${PAY[o.payment_method] || o.payment_method}</span>
+        <strong>฿${o.total_amount.toLocaleString()}</strong>
+      </div>
+    </div>`).join('');
 }
 
 // ─── Order History ────────────────────────────────────────────────────────────

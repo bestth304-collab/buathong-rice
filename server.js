@@ -140,10 +140,21 @@ app.post('/api/user/facebook', (req, res) => {
 app.get('/api/user/profile', requireUser, (req, res) => {
   const user = db.getOne('SELECT id,name,phone,email,avatar_url,created_at FROM users WHERE id=?', [req.user.id]);
   const addresses = db.getAll('SELECT * FROM user_addresses WHERE user_id=? ORDER BY is_default DESC,id DESC', [req.user.id]);
-  const orders = db.getAll('SELECT * FROM orders WHERE user_id=? ORDER BY id DESC LIMIT 20', [req.user.id]).map(o => ({
+  const orders = db.getAll('SELECT * FROM orders WHERE user_id=? ORDER BY id DESC LIMIT 50', [req.user.id]).map(o => ({
     ...o, items: db.getAll('SELECT * FROM order_items WHERE order_id=?', [o.id])
   }));
-  res.json({ ...user, addresses, orders });
+  const wishlist = db.getAll(`
+    SELECT p.* FROM user_wishlist w
+    JOIN products p ON p.id = w.product_id
+    WHERE w.user_id = ? AND p.active = 1
+    ORDER BY w.created_at DESC`, [req.user.id]);
+  const stats = {
+    delivered: orders.filter(o => o.status === 'delivered').length,
+    shipping: orders.filter(o => o.status === 'shipping').length,
+    pending: orders.filter(o => o.status === 'pending' || o.status === 'confirmed').length,
+    unpaid: orders.filter(o => o.payment_status !== 'paid' && o.status !== 'cancelled').length,
+  };
+  res.json({ ...user, addresses, orders, wishlist, stats });
 });
 
 app.put('/api/user/profile', requireUser, (req, res) => {
@@ -160,6 +171,26 @@ app.put('/api/user/password', requireUser, (req, res) => {
   if (!next || next.length < 6) return res.status(400).json({ error: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัว' });
   db.run('UPDATE users SET password=? WHERE id=?', [bcrypt.hashSync(next, 10), req.user.id]);
   res.json({ ok: true });
+});
+
+// ─── Wishlist ─────────────────────────────────────────────────────────────────
+app.get('/api/user/wishlist', requireUser, (req, res) => {
+  res.json(db.getAll(`
+    SELECT p.* FROM user_wishlist w JOIN products p ON p.id=w.product_id
+    WHERE w.user_id=? AND p.active=1 ORDER BY w.created_at DESC`, [req.user.id]));
+});
+
+app.post('/api/user/wishlist/:productId', requireUser, (req, res) => {
+  const pid = parseInt(req.params.productId);
+  if (!db.getOne('SELECT id FROM products WHERE id=? AND active=1', [pid]))
+    return res.status(404).json({ error: 'ไม่พบสินค้า' });
+  try { db.run('INSERT INTO user_wishlist (user_id,product_id) VALUES (?,?)', [req.user.id, pid]); } catch {}
+  res.json({ ok: true, inWishlist: true });
+});
+
+app.delete('/api/user/wishlist/:productId', requireUser, (req, res) => {
+  db.run('DELETE FROM user_wishlist WHERE user_id=? AND product_id=?', [req.user.id, parseInt(req.params.productId)]);
+  res.json({ ok: true, inWishlist: false });
 });
 
 // ─── Addresses ────────────────────────────────────────────────────────────────

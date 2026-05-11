@@ -226,79 +226,178 @@
     </div>
   </div>
 
-  <!-- ═══ Profile Modal (full-page) ═══ -->
+  <!-- ═══ Profile Modal (full-page sidebar) ═══ -->
   <div class="modal-overlay" id="profileModal">
     <div class="modal modal-profile">
-      <div class="modal-header">
-        <div style="display:flex;align-items:center;gap:12px">
-          <button class="profile-page-back" onclick="closeProfileModal()" title="กลับ">←</button>
-          <h3>👤 บัญชีของฉัน</h3>
-        </div>
-        <button class="profile-logout-btn" onclick="doLogout()">
-          🚪 ออกจากระบบ
-        </button>
+
+      <!-- Top bar -->
+      <div class="profile-topbar">
+        <button class="profile-page-back" onclick="closeProfileModal()" title="กลับ">←</button>
+        <span class="profile-topbar-title">🌾 บัวทองไรซ์</span>
+        <button class="profile-logout-btn" onclick="doLogout()">🚪 ออกจากระบบ</button>
       </div>
-      <div class="modal-body">
-        <div class="profile-tabs">
-          <button id="ptab-info" class="profile-tab active" onclick="showProfileTab('info')">ข้อมูลส่วนตัว</button>
-          <button id="ptab-addresses" class="profile-tab" onclick="showProfileTab('addresses')">ที่อยู่จัดส่ง</button>
-          <button id="ptab-history" class="profile-tab" onclick="showProfileTab('history')">ประวัติการซื้อ</button>
-        </div>
 
-        <!-- Info Panel -->
-        <div id="ppanel-info">
-          <form onsubmit="saveProfile(event)" style="margin-bottom:24px">
-            <div class="form-group"><label>ชื่อ-นามสกุล</label><input type="text" id="profileName" placeholder="ชื่อ-นามสกุล"></div>
-            <div class="form-group"><label>อีเมล</label><input type="email" id="profileEmail" placeholder="email@example.com"></div>
-            <div class="form-group"><label>เบอร์โทรศัพท์</label><div class="readonly-field" id="profilePhone">-</div></div>
-            <button type="submit" class="btn btn-primary btn-sm">บันทึกข้อมูล</button>
-          </form>
-          <hr style="margin:20px 0;border:none;border-top:1px solid #eee">
-          <h4 style="margin-bottom:14px;color:#5c3d1e">เปลี่ยนรหัสผ่าน</h4>
-          <form id="passwordForm" onsubmit="savePassword(event)">
-            <div class="form-group"><label>รหัสผ่านปัจจุบัน</label><input type="password" id="pwCurrent" placeholder="รหัสผ่านเดิม"></div>
-            <div class="form-group"><label>รหัสผ่านใหม่</label><input type="password" id="pwNew" placeholder="อย่างน้อย 6 ตัวอักษร"></div>
-            <div class="form-group"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="pwNew2" placeholder="พิมพ์อีกครั้ง"></div>
-            <button type="submit" class="btn btn-ghost btn-sm">เปลี่ยนรหัสผ่าน</button>
-          </form>
-        </div>
-
-        <!-- Addresses Panel -->
-        <div id="ppanel-addresses" style="display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <h4 style="color:#5c3d1e">ที่อยู่จัดส่งของฉัน</h4>
-            <button class="btn btn-primary btn-sm" onclick="openAddressForm()">+ เพิ่มที่อยู่</button>
+      <div class="profile-layout">
+        <!-- Sidebar -->
+        <aside class="profile-sidebar">
+          <div class="profile-sidebar-user">
+            <div class="profile-avatar-wrap">
+              <img id="profileAvatarImg" src="" alt="" class="profile-avatar-img" style="display:none">
+              <div id="profileAvatarInitial" class="profile-avatar-initial">?</div>
+            </div>
+            <div class="profile-sidebar-name" id="sidebarName">-</div>
+            <div class="profile-sidebar-phone" id="sidebarPhone">-</div>
           </div>
-          <div id="addressList"></div>
-          <!-- Address Form -->
-          <div id="addrFormPanel" style="display:none;background:#fdf8f0;border-radius:12px;padding:20px;margin-top:16px">
-            <h5 style="margin-bottom:16px;color:#5c3d1e">เพิ่ม/แก้ไขที่อยู่</h5>
-            <input type="hidden" id="addrId">
-            <form onsubmit="saveAddress(event)">
-              <div class="form-row-2">
-                <div class="form-group"><label>ป้ายกำกับ</label>
-                  <select id="addrLabel" class="form-select"><option>บ้าน</option><option>ที่ทำงาน</option><option>อื่นๆ</option></select>
-                </div>
-                <div class="form-group"><label style="display:flex;align-items:center;gap:8px;margin-top:28px">
-                  <input type="checkbox" id="addrDefault"> ตั้งเป็นค่าเริ่มต้น</label>
-                </div>
-              </div>
-              <div class="form-group"><label>ชื่อผู้รับ *</label><input type="text" id="addrName" required></div>
-              <div class="form-group"><label>เบอร์โทรผู้รับ *</label><input type="tel" id="addrPhone" required></div>
-              <div class="form-group"><label>ที่อยู่จัดส่ง *</label><textarea id="addrText" rows="3" placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" required></textarea></div>
-              <div style="display:flex;gap:10px">
-                <button type="button" onclick="closeAddressForm()" class="btn btn-ghost btn-sm">ยกเลิก</button>
-                <button type="submit" class="btn btn-primary btn-sm">บันทึกที่อยู่</button>
-              </div>
-            </form>
-          </div>
-        </div>
 
-        <!-- History Panel -->
-        <div id="ppanel-history" style="display:none">
-          <h4 style="margin-bottom:16px;color:#5c3d1e">ประวัติการสั่งซื้อ</h4>
-          <div id="orderHistoryList"></div>
-        </div>
+          <nav class="profile-nav">
+            <div class="profile-nav-group-label">รายการ</div>
+            <button class="profile-nav-item" id="pnav-orders" onclick="showProfileSection('orders')">
+              <span>🛒</span> คำสั่งซื้อ
+              <span class="pnav-badge" id="pnav-orders-badge" style="display:none">0</span>
+            </button>
+            <button class="profile-nav-item" id="pnav-wishlist" onclick="showProfileSection('wishlist')">
+              <span>❤️</span> สินค้าที่ถูกใจ
+              <span class="pnav-badge" id="pnav-wishlist-badge" style="display:none">0</span>
+            </button>
+            <div class="profile-nav-group-label" style="margin-top:16px">บัญชี</div>
+            <button class="profile-nav-item active" id="pnav-info" onclick="showProfileSection('info')">
+              <span>👤</span> ข้อมูลส่วนตัว
+            </button>
+            <button class="profile-nav-item" id="pnav-address" onclick="showProfileSection('address')">
+              <span>📍</span> ที่อยู่สำหรับจัดส่ง
+            </button>
+            <button class="profile-nav-item" id="pnav-payment" onclick="showProfileSection('payment')">
+              <span>💳</span> ช่องทางชำระเงิน
+            </button>
+          </nav>
+        </aside>
+
+        <!-- Main content -->
+        <main class="profile-main">
+
+          <!-- ── ข้อมูลส่วนตัว ── -->
+          <div id="psec-info" class="profile-section">
+            <div class="profile-section-header">
+              <h2>ข้อมูลส่วนตัว</h2>
+            </div>
+            <!-- Stats bar -->
+            <div class="profile-stats-bar">
+              <div class="profile-stat-item">
+                <div class="profile-stat-num" id="statDelivered">0</div>
+                <div class="profile-stat-label">เสร็จสิ้น</div>
+              </div>
+              <div class="profile-stat-item">
+                <div class="profile-stat-num" id="statShipping">0</div>
+                <div class="profile-stat-label">จัดส่งแล้ว</div>
+              </div>
+              <div class="profile-stat-item">
+                <div class="profile-stat-num" id="statPending">0</div>
+                <div class="profile-stat-label">รอดำเนินการ</div>
+              </div>
+              <div class="profile-stat-item">
+                <div class="profile-stat-num" id="statUnpaid">0</div>
+                <div class="profile-stat-label">รอชำระเงิน</div>
+              </div>
+            </div>
+            <!-- Info grid -->
+            <div class="profile-info-card">
+              <div class="profile-info-grid">
+                <div class="profile-info-field"><div class="pif-label">ชื่อ-นามสกุล</div><div class="pif-value" id="infoName">-</div></div>
+                <div class="profile-info-field"><div class="pif-label">อีเมล</div><div class="pif-value" id="infoEmail">-</div></div>
+                <div class="profile-info-field"><div class="pif-label">เบอร์โทรศัพท์</div><div class="pif-value" id="infoPhone">-</div></div>
+                <div class="profile-info-field"><div class="pif-label">สมัครสมาชิกเมื่อ</div><div class="pif-value" id="infoSince">-</div></div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="showProfileSection('edit')">✏️ แก้ไขข้อมูลส่วนตัว</button>
+            </div>
+          </div>
+
+          <!-- ── แก้ไขข้อมูล ── -->
+          <div id="psec-edit" class="profile-section" style="display:none">
+            <div class="profile-section-header">
+              <button class="pback-btn" onclick="showProfileSection('info')">← กลับ</button>
+              <h2>แก้ไขข้อมูลส่วนตัว</h2>
+            </div>
+            <div class="profile-info-card">
+              <form onsubmit="saveProfile(event)">
+                <div class="form-group"><label>ชื่อ-นามสกุล</label><input type="text" id="profileName" placeholder="ชื่อ-นามสกุล"></div>
+                <div class="form-group"><label>อีเมล</label><input type="email" id="profileEmail" placeholder="email@example.com"></div>
+                <div class="form-group"><label>เบอร์โทรศัพท์</label><div class="readonly-field" id="profilePhone">-</div></div>
+                <button type="submit" class="btn btn-primary btn-sm">บันทึกข้อมูล</button>
+              </form>
+              <hr style="margin:24px 0;border:none;border-top:1px solid #eee">
+              <h4 style="margin-bottom:14px;color:var(--brown)">เปลี่ยนรหัสผ่าน</h4>
+              <form id="passwordForm" onsubmit="savePassword(event)">
+                <div class="form-group"><label>รหัสผ่านปัจจุบัน</label><input type="password" id="pwCurrent" placeholder="รหัสผ่านเดิม"></div>
+                <div class="form-group"><label>รหัสผ่านใหม่</label><input type="password" id="pwNew" placeholder="อย่างน้อย 6 ตัวอักษร"></div>
+                <div class="form-group"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="pwNew2" placeholder="พิมพ์อีกครั้ง"></div>
+                <button type="submit" class="btn btn-ghost btn-sm">เปลี่ยนรหัสผ่าน</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- ── ที่อยู่จัดส่ง ── -->
+          <div id="psec-address" class="profile-section" style="display:none">
+            <div class="profile-section-header">
+              <h2>ที่อยู่สำหรับจัดส่ง</h2>
+              <button class="btn btn-primary btn-sm" onclick="openAddressForm()">+ เพิ่มที่อยู่</button>
+            </div>
+            <div id="addressList"></div>
+            <div id="addrFormPanel" style="display:none;background:#fdf8f0;border-radius:12px;padding:20px;margin-top:16px">
+              <h5 style="margin-bottom:16px;color:var(--brown)">เพิ่ม/แก้ไขที่อยู่</h5>
+              <input type="hidden" id="addrId">
+              <form onsubmit="saveAddress(event)">
+                <div class="form-row-2">
+                  <div class="form-group"><label>ป้ายกำกับ</label>
+                    <select id="addrLabel" class="form-select"><option>บ้าน</option><option>ที่ทำงาน</option><option>อื่นๆ</option></select>
+                  </div>
+                  <div class="form-group" style="display:flex;align-items:center;padding-top:28px">
+                    <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="addrDefault"> ตั้งเป็นค่าเริ่มต้น</label>
+                  </div>
+                </div>
+                <div class="form-group"><label>ชื่อผู้รับ *</label><input type="text" id="addrName" required></div>
+                <div class="form-group"><label>เบอร์โทรผู้รับ *</label><input type="tel" id="addrPhone" required></div>
+                <div class="form-group"><label>ที่อยู่จัดส่ง *</label><textarea id="addrText" rows="3" placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์" required></textarea></div>
+                <div style="display:flex;gap:10px">
+                  <button type="button" onclick="closeAddressForm()" class="btn btn-ghost btn-sm">ยกเลิก</button>
+                  <button type="submit" class="btn btn-primary btn-sm">บันทึกที่อยู่</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- ── ช่องทางชำระเงิน ── -->
+          <div id="psec-payment" class="profile-section" style="display:none">
+            <div class="profile-section-header"><h2>ช่องทางชำระเงิน</h2></div>
+            <div class="profile-info-card">
+              <div class="payment-method-row">
+                <div class="pm-icon">📱</div>
+                <div class="pm-info"><div class="pm-name">พร้อมเพย์ / QR Code</div><div class="pm-desc">สแกนจ่ายผ่านแอปธนาคาร</div></div>
+                <span class="badge badge-success">พร้อมใช้</span>
+              </div>
+              <div class="payment-method-row">
+                <div class="pm-icon">💳</div>
+                <div class="pm-info"><div class="pm-name">บัตรเครดิต / เดบิต</div><div class="pm-desc">Visa, Mastercard, JCB</div></div>
+                <span class="badge badge-success">พร้อมใช้</span>
+              </div>
+              <p style="margin-top:20px;font-size:13px;color:var(--text-light)">💡 เลือกช่องทางชำระเงินได้ในขั้นตอนสั่งซื้อ ไม่ต้องบันทึกข้อมูลบัตรล่วงหน้า</p>
+            </div>
+            <div class="profile-section-header" style="margin-top:28px"><h3>ประวัติการชำระเงิน</h3></div>
+            <div id="paymentHistoryList"></div>
+          </div>
+
+          <!-- ── คำสั่งซื้อ ── -->
+          <div id="psec-orders" class="profile-section" style="display:none">
+            <div class="profile-section-header"><h2>คำสั่งซื้อของฉัน</h2></div>
+            <div id="orderHistoryList"></div>
+          </div>
+
+          <!-- ── สินค้าที่ถูกใจ ── -->
+          <div id="psec-wishlist" class="profile-section" style="display:none">
+            <div class="profile-section-header"><h2>❤️ สินค้าที่ถูกใจ</h2></div>
+            <div id="wishlistGrid" class="wishlist-grid"></div>
+          </div>
+
+        </main>
       </div>
     </div>
   </div>
