@@ -53,10 +53,9 @@ function renderProducts(list) {
         <img src="${p.image_url || 'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=400'}"
              alt="${p.name}" loading="lazy"
              onerror="this.src='https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=400'">
-        ${p.badge && STICKER[p.badge] ? `<div class="product-sticker sticker-${p.badge}">${STICKER[p.badge]}</div>` : ''}
-        ${out ? `<div class="product-badge out">สินค้าหมด</div>` : ''}
         <button class="wish-btn ${wished ? 'wished' : ''}" data-wish-id="${p.id}"
           onclick="toggleWishlist(${p.id})" title="${wished ? 'เอาออกจากสินค้าที่ถูกใจ' : 'เพิ่มในสินค้าที่ถูกใจ'}">♥</button>
+        ${p.badge && STICKER[p.badge] ? `<div class="product-sticker sticker-${p.badge}">${STICKER[p.badge]}</div>` : out ? `<div class="product-badge">สินค้าหมด</div>` : ''}
       </div>
       <div class="product-body">
         <div class="product-cat">${p.category}</div>
