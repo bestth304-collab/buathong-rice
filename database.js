@@ -107,10 +107,17 @@ async function init() {
   }
 
   // seed admin
-  const adminExists = getOne('SELECT id FROM admins WHERE username = ?', ['admin']);
+  const adminExists = getOne('SELECT id FROM admins WHERE username = ?', ['BUATHONGRICE1']);
   if (!adminExists) {
-    db.run('INSERT INTO admins (username,password,name) VALUES (?,?,?)',
-      ['admin', bcrypt.hashSync('admin1234', 10), 'ผู้ดูแลระบบ']);
+    // อัปเดต admin เดิม (ถ้ามี) หรือสร้างใหม่
+    const oldAdmin = getOne('SELECT id FROM admins LIMIT 1');
+    if (oldAdmin) {
+      db.run('UPDATE admins SET username=?,password=?,name=? WHERE id=?',
+        ['BUATHONGRICE1', bcrypt.hashSync('rice1234', 10), 'ผู้ดูแลระบบ', oldAdmin.id]);
+    } else {
+      db.run('INSERT INTO admins (username,password,name) VALUES (?,?,?)',
+        ['BUATHONGRICE1', bcrypt.hashSync('rice1234', 10), 'ผู้ดูแลระบบ']);
+    }
   }
 
   // seed products
