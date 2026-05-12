@@ -11,13 +11,15 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'buathong-rice-secret-2024';
 
 // ─── In-memory stores (reset on restart) ─────────────────────────────────────
-const otpStore   = new Map(); // phone → { otp, expiresAt, sentAt, attempts }
-const resetStore = new Map(); // email → { code, expiresAt, sentAt }
+const otpStore          = new Map(); // phone → { otp, expiresAt, sentAt, attempts }
+const resetStore        = new Map(); // email → { code, expiresAt, sentAt }
+const loginAttemptStore = new Map(); // identifier → { attempts, lockedUntil }
 setInterval(() => {
   const now = Date.now();
-  otpStore.forEach((v, k)   => { if (now > v.expiresAt) otpStore.delete(k); });
-  resetStore.forEach((v, k) => { if (now > v.expiresAt) resetStore.delete(k); });
-}, 10 * 60_000);
+  otpStore.forEach((v, k)          => { if (now > v.expiresAt) otpStore.delete(k); });
+  resetStore.forEach((v, k)        => { if (now > v.expiresAt) resetStore.delete(k); });
+  loginAttemptStore.forEach((v, k) => { if (now > v.lockedUntil) loginAttemptStore.delete(k); });
+}, 5 * 60_000);
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || '';
 const PROMPTPAY_ID = process.env.PROMPTPAY_ID || '0812345678';
@@ -181,9 +183,33 @@ app.post('/api/user/reset-password', (req, res) => {
 app.post('/api/user/login', (req, res) => {
   const { phone: identifier, password } = req.body;
   if (!identifier || !password) return res.status(400).json({ error: 'กรุณากรอกข้อมูล' });
+
+  const key     = identifier.toLowerCase().trim();
+  const attempt = loginAttemptStore.get(key);
+  if (attempt && attempt.lockedUntil > Date.now()) {
+    const secs = Math.ceil((attempt.lockedUntil - Date.now()) / 1000);
+    const mins = Math.floor(secs / 60);
+    const s    = secs % 60;
+    return res.status(429).json({
+      error: `เข้าสู่ระบบผิดพลาดเกินกำหนด กรุณารอ ${mins > 0 ? mins + ' นาที ' : ''}${s} วินาที`,
+      retryAfter: secs,
+    });
+  }
+
   const user = db.getOne('SELECT * FROM users WHERE email = ? OR phone = ?', [identifier, identifier]);
-  if (!user || !user.password || !bcrypt.compareSync(password, user.password))
-    return res.status(401).json({ error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+  if (!user || !user.password || !bcrypt.compareSync(password, user.password)) {
+    const cur = loginAttemptStore.get(key) || { attempts: 0, lockedUntil: 0 };
+    cur.attempts += 1;
+    if (cur.attempts >= 3) {
+      cur.lockedUntil = Date.now() + 5 * 60_000;
+      loginAttemptStore.set(key, cur);
+      return res.status(429).json({ error: 'เข้าสู่ระบบผิดพลาดเกิน 3 ครั้ง บัญชีถูกระงับชั่วคราว 5 นาที', retryAfter: 300 });
+    }
+    loginAttemptStore.set(key, cur);
+    return res.status(401).json({ error: `ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง (เหลืออีก ${3 - cur.attempts} ครั้ง)` });
+  }
+
+  loginAttemptStore.delete(key);
   res.json({ token: userToken(user), name: user.name, id: user.id });
 });
 

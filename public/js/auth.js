@@ -181,10 +181,32 @@ async function doResetPassword(e) {
 }
 
 // ─── Phone Login ──────────────────────────────────────────────────────────────
+let _loginCooldownTimer = null;
+
+function startLoginCooldown(seconds) {
+  const btn   = document.getElementById('loginSubmitBtn');
+  const errEl = document.getElementById('loginError');
+  let remaining = seconds;
+  if (_loginCooldownTimer) clearInterval(_loginCooldownTimer);
+  btn.disabled = true;
+  _loginCooldownTimer = setInterval(() => {
+    remaining--;
+    const m = Math.floor(remaining / 60), s = remaining % 60;
+    btn.textContent = `รอ ${m > 0 ? m + ':' : ''}${String(s).padStart(2,'0')}`;
+    errEl.textContent = `🔒 บัญชีถูกระงับชั่วคราว กรุณารอ ${m > 0 ? m + ' นาที ' : ''}${s} วินาที`;
+    if (remaining <= 0) {
+      clearInterval(_loginCooldownTimer);
+      btn.disabled = false;
+      btn.textContent = 'เข้าสู่ระบบ';
+      errEl.style.display = 'none';
+    }
+  }, 1000);
+}
+
 async function doPhoneLogin(e) {
   e.preventDefault();
   const errEl = document.getElementById('loginError');
-  const btn = document.getElementById('loginSubmitBtn');
+  const btn   = document.getElementById('loginSubmitBtn');
   errEl.style.display = 'none';
   btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ...';
   try {
@@ -193,14 +215,25 @@ async function doPhoneLogin(e) {
       body: JSON.stringify({ phone: document.getElementById('loginPhone').value, password: document.getElementById('loginPassword').value })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    if (!res.ok) {
+      if (res.status === 429 && data.retryAfter) {
+        errEl.textContent = data.error; errEl.style.display = 'block';
+        startLoginCooldown(data.retryAfter);
+        return;
+      }
+      throw new Error(data.error);
+    }
     setToken(data.token);
     await checkUserAuth();
     closeAuthModal();
     showToast(`✅ ยินดีต้อนรับกลับ ${data.name}!`);
   } catch (err) {
     errEl.textContent = err.message; errEl.style.display = 'block';
-  } finally { btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ'; }
+  } finally {
+    if (!_loginCooldownTimer || !btn.disabled) {
+      btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
+    }
+  }
 }
 
 // ─── Register Field Validation ────────────────────────────────────────────────
