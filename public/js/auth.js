@@ -81,13 +81,6 @@ function closeAuthModal() {
   document.getElementById('authModal').classList.remove('open');
   document.getElementById('loginForm').reset();
   document.getElementById('registerForm').reset();
-  // รีเซ็ต OTP step กลับไปขั้นที่ 1
-  clearInterval(_otpTimerInterval);
-  clearInterval(_resendInterval);
-  const s1 = document.getElementById('regStep1');
-  const s2 = document.getElementById('regStep2');
-  if (s1) s1.style.display = 'block';
-  if (s2) s2.style.display = 'none';
   document.getElementById('registerError').style.display = 'none';
 }
 
@@ -266,146 +259,36 @@ function validateAllRegFields() {
   return { ok: true };
 }
 
-// ─── Phone Register — Step 1: ส่ง OTP ────────────────────────────────────────
-let _otpTimerInterval = null;
-let _resendInterval   = null;
-
-async function sendPhoneOtp(e) {
+// ─── Phone Register ───────────────────────────────────────────────────────────
+async function doPhoneRegister(e) {
   e.preventDefault();
   const errEl = document.getElementById('registerError');
-  const btn   = document.getElementById('sendOtpBtn');
+  const btn   = document.getElementById('registerSubmitBtn');
   errEl.style.display = 'none';
 
   const check = validateAllRegFields();
   if (!check.ok) { errEl.textContent = check.msg; errEl.style.display = 'block'; return; }
 
-  const phone = document.getElementById('registerPhone').value.trim();
-  btn.disabled = true; btn.textContent = 'กำลังส่ง OTP...';
-  try {
-    const res  = await fetch('/api/user/otp/send', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-
-    // ไปขั้น 2
-    document.getElementById('regStep1').style.display = 'none';
-    document.getElementById('regStep2').style.display = 'block';
-    document.getElementById('otpPhoneDisplay').textContent = phone;
-    document.getElementById('otpInput').value = '';
-    document.getElementById('otpInput').focus();
-
-    // Dev mode: แสดง OTP บนหน้าจอ
-    if (data._dev_otp) {
-      document.getElementById('otpDemoCode').textContent = data._dev_otp;
-      document.getElementById('otpDemoHint').style.display = 'block';
-    } else {
-      document.getElementById('otpDemoHint').style.display = 'none';
-    }
-
-    startOtpCountdown();
-    startResendCountdown();
-  } catch (err) {
-    errEl.textContent = err.message; errEl.style.display = 'block';
-  } finally { btn.disabled = false; btn.textContent = '📱 ส่ง OTP ยืนยันเบอร์'; }
-}
-
-function startOtpCountdown() {
-  clearInterval(_otpTimerInterval);
-  let secs = 5 * 60;
-  const el = document.getElementById('otpCountdown');
-  _otpTimerInterval = setInterval(() => {
-    secs--;
-    const m = Math.floor(secs / 60), s = secs % 60;
-    if (el) el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
-    if (secs <= 0) {
-      clearInterval(_otpTimerInterval);
-      const timerEl = document.getElementById('otpTimer');
-      if (timerEl) timerEl.innerHTML = '⚠️ OTP หมดอายุแล้ว กรุณาขอใหม่';
-    }
-  }, 1000);
-}
-
-function startResendCountdown(wait = 60) {
-  clearInterval(_resendInterval);
-  const btn = document.getElementById('resendOtpBtn');
-  const span = document.getElementById('resendCountdown');
-  let secs = wait;
-  btn.disabled = true;
-  _resendInterval = setInterval(() => {
-    secs--;
-    if (span) span.textContent = secs;
-    if (secs <= 0) {
-      clearInterval(_resendInterval);
-      btn.disabled = false;
-      btn.textContent = 'ส่งรหัสใหม่';
-    }
-  }, 1000);
-}
-
-async function resendOtp() {
-  const errEl = document.getElementById('registerError');
-  errEl.style.display = 'none';
-  const phone = document.getElementById('registerPhone').value.trim();
-  try {
-    const res  = await fetch('/api/user/otp/send', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    if (data._dev_otp) { document.getElementById('otpDemoCode').textContent = data._dev_otp; }
-    startOtpCountdown();
-    startResendCountdown();
-    showToast('📩 ส่ง OTP ใหม่แล้ว');
-  } catch (err) {
-    errEl.textContent = err.message; errEl.style.display = 'block';
-  }
-}
-
-function backToRegStep1() {
-  clearInterval(_otpTimerInterval);
-  clearInterval(_resendInterval);
-  document.getElementById('regStep1').style.display = 'block';
-  document.getElementById('regStep2').style.display = 'none';
-  document.getElementById('registerError').style.display = 'none';
-}
-
-// ─── Phone Register — Step 2: ยืนยัน OTP และสมัคร ───────────────────────────
-async function doPhoneRegister() {
-  const errEl = document.getElementById('registerError');
-  const btn   = document.getElementById('registerSubmitBtn');
-  errEl.style.display = 'none';
-
-  const otp = document.getElementById('otpInput').value.trim();
-  if (!/^\d{6}$/.test(otp)) {
-    errEl.textContent = 'กรุณากรอกรหัส OTP 6 หลัก'; errEl.style.display = 'block'; return;
-  }
-
-  btn.disabled = true; btn.textContent = 'กำลังยืนยัน...';
+  btn.disabled = true; btn.textContent = 'กำลังสมัครสมาชิก...';
   try {
     const res = await fetch('/api/user/register', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name:     document.getElementById('registerName').value,
+        name:     document.getElementById('registerName').value.trim(),
         phone:    document.getElementById('registerPhone').value.trim(),
-        email:    document.getElementById('registerEmail').value,
+        email:    document.getElementById('registerEmail').value.trim(),
         password: document.getElementById('registerPassword').value,
-        otp
       })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    clearInterval(_otpTimerInterval);
-    clearInterval(_resendInterval);
     setToken(data.token);
     await checkUserAuth();
     closeAuthModal();
     showToast(`🎉 สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ${data.name}!`);
   } catch (err) {
     errEl.textContent = err.message; errEl.style.display = 'block';
-  } finally { btn.disabled = false; btn.textContent = '✅ ยืนยันและสมัครสมาชิก'; }
+  } finally { btn.disabled = false; btn.textContent = 'สมัครสมาชิก'; }
 }
 
 // ─── Google Sign-In ───────────────────────────────────────────────────────────

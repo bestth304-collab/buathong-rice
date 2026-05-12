@@ -112,33 +112,15 @@ app.post('/api/user/otp/send', (req, res) => {
 });
 
 app.post('/api/user/register', (req, res) => {
-  const { name, phone, email, password, otp } = req.body;
-  if (!name || !phone || !password || !otp) return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
+  const { name, phone, email, password } = req.body;
+  if (!name || !phone || !password) return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
   if (!/^0[0-9]{9}$/.test(phone)) return res.status(400).json({ error: 'เบอร์โทรไม่ถูกต้อง (0XXXXXXXXX)' });
   if (password.length < 6) return res.status(400).json({ error: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' });
-
-  // ตรวจสอบ OTP
-  const record = otpStore.get(phone);
-  if (!record) return res.status(400).json({ error: 'ยังไม่ได้ขอรหัส OTP หรือรหัสหมดอายุแล้ว' });
-  if (Date.now() > record.expiresAt) {
-    otpStore.delete(phone);
-    return res.status(400).json({ error: 'รหัส OTP หมดอายุแล้ว กรุณาขอรหัสใหม่' });
-  }
-  record.attempts = (record.attempts || 0) + 1;
-  if (record.attempts > 5) {
-    otpStore.delete(phone);
-    return res.status(400).json({ error: 'ใส่รหัสผิดเกินจำนวนครั้งที่กำหนด กรุณาขอ OTP ใหม่' });
-  }
-  if (record.otp !== otp.trim())
-    return res.status(400).json({ error: `รหัส OTP ไม่ถูกต้อง (เหลือ ${5 - record.attempts} ครั้ง)` });
-
-  otpStore.delete(phone); // ใช้ได้ครั้งเดียว
-
   if (db.getOne('SELECT id FROM users WHERE phone = ?', [phone]))
     return res.status(409).json({ error: 'เบอร์โทรนี้ถูกใช้งานแล้ว' });
   db.run('INSERT INTO users (name,phone,email,password) VALUES (?,?,?,?)',
     [name, phone, email || null, bcrypt.hashSync(password, 10)]);
-  const user = db.getOne('SELECT * FROM users WHERE phone = ?', [phone]); // หลีกเลี่ยง lastId()
+  const user = db.getOne('SELECT * FROM users WHERE phone = ?', [phone]);
   if (!user) return res.status(500).json({ error: 'สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่' });
   res.status(201).json({ token: userToken(user), name: user.name, id: user.id });
 });

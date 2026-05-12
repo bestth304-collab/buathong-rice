@@ -213,87 +213,60 @@
         <div id="registerPanel" style="display:none">
           <div id="registerError" class="auth-error" style="display:none"></div>
 
-          <!-- ขั้นที่ 1: กรอกข้อมูล -->
-          <div id="regStep1">
-            <form id="registerForm" onsubmit="sendPhoneOtp(event)" novalidate>
+          <form id="registerForm" onsubmit="doPhoneRegister(event)" novalidate>
 
-              <!-- ชื่อ -->
-              <div class="form-group">
-                <label>ชื่อ-นามสกุล *</label>
-                <input type="text" id="registerName" placeholder="ชื่อ นามสกุล"
-                       autocomplete="name" oninput="validateRegField('name')" required>
-                <span class="field-hint" id="hint-name"></span>
-              </div>
-
-              <!-- เบอร์โทร -->
-              <div class="form-group">
-                <label>เบอร์โทรศัพท์ *</label>
-                <input type="tel" id="registerPhone" placeholder="0812345678"
-                       maxlength="10" inputmode="numeric" autocomplete="tel"
-                       oninput="filterPhoneInput(this); validateRegField('phone')" required>
-                <span class="field-hint" id="hint-phone"></span>
-              </div>
-
-              <!-- อีเมล -->
-              <div class="form-group">
-                <label>อีเมล <span style="font-weight:400;color:var(--text-light)">(ไม่บังคับ)</span></label>
-                <input type="text" id="registerEmail" placeholder="example@gmail.com"
-                       autocomplete="email" oninput="validateRegField('email')">
-                <span class="field-hint" id="hint-email"></span>
-              </div>
-
-              <!-- รหัสผ่าน -->
-              <div class="form-group">
-                <label>รหัสผ่าน *</label>
-                <div class="input-eye-wrap">
-                  <input type="password" id="registerPassword" placeholder="อย่างน้อย 6 ตัวอักษร"
-                         autocomplete="new-password" oninput="validateRegField('pass'); validateRegField('pass2')" required>
-                  <button type="button" class="eye-btn" onclick="togglePassVis('registerPassword', this)">👁</button>
-                </div>
-                <div class="strength-bar-wrap" id="strengthWrap" style="display:none">
-                  <div class="strength-bar" id="strengthBar"></div>
-                </div>
-                <span class="field-hint" id="hint-pass"></span>
-              </div>
-
-              <!-- ยืนยันรหัสผ่าน -->
-              <div class="form-group">
-                <label>ยืนยันรหัสผ่าน *</label>
-                <div class="input-eye-wrap">
-                  <input type="password" id="registerPassword2" placeholder="พิมพ์รหัสผ่านอีกครั้ง"
-                         autocomplete="new-password" oninput="validateRegField('pass2')" required>
-                  <button type="button" class="eye-btn" onclick="togglePassVis('registerPassword2', this)">👁</button>
-                </div>
-                <span class="field-hint" id="hint-pass2"></span>
-              </div>
-
-              <button type="submit" class="btn btn-primary btn-full" id="sendOtpBtn">📱 ส่ง OTP ยืนยันเบอร์</button>
-            </form>
-          </div>
-
-          <!-- ขั้นที่ 2: ยืนยัน OTP -->
-          <div id="regStep2" style="display:none">
-            <div class="otp-info-box">
-              <div class="otp-phone-display">📱 ส่ง OTP ไปยัง <strong id="otpPhoneDisplay"></strong></div>
-              <div id="otpDemoHint" class="otp-demo-hint" style="display:none">
-                🧪 โหมดทดสอบ — รหัส OTP ของคุณคือ <strong id="otpDemoCode"></strong>
-              </div>
+            <!-- ชื่อ -->
+            <div class="form-group">
+              <label>ชื่อ-นามสกุล *</label>
+              <input type="text" id="registerName" placeholder="ชื่อ นามสกุล"
+                     autocomplete="name" oninput="validateRegField('name')" required>
+              <span class="field-hint" id="hint-name"></span>
             </div>
-            <div class="form-group" style="margin-top:16px">
-              <label>รหัส OTP 6 หลัก *</label>
-              <input type="text" id="otpInput" class="otp-input" placeholder="000000"
-                     maxlength="6" inputmode="numeric" pattern="[0-9]{6}"
-                     autocomplete="one-time-code">
+
+            <!-- เบอร์โทร -->
+            <div class="form-group">
+              <label>เบอร์โทรศัพท์ *</label>
+              <input type="tel" id="registerPhone" placeholder="0812345678"
+                     maxlength="10" inputmode="numeric" autocomplete="tel"
+                     oninput="filterPhoneInput(this); validateRegField('phone')" required>
+              <span class="field-hint" id="hint-phone"></span>
             </div>
-            <div class="otp-meta">
-              <span class="otp-timer" id="otpTimer">⏱ หมดอายุใน <span id="otpCountdown">5:00</span></span>
-              <button type="button" class="link-btn" id="resendOtpBtn" onclick="resendOtp()" disabled>
-                ส่งใหม่ (<span id="resendCountdown">60</span>s)
-              </button>
+
+            <!-- อีเมล -->
+            <div class="form-group">
+              <label>อีเมล <span style="font-weight:400;color:var(--text-light)">(ไม่บังคับ)</span></label>
+              <input type="text" id="registerEmail" placeholder="example@gmail.com"
+                     autocomplete="email" oninput="validateRegField('email')">
+              <span class="field-hint" id="hint-email"></span>
             </div>
-            <button type="button" class="btn btn-primary btn-full" id="registerSubmitBtn" onclick="doPhoneRegister()">✅ ยืนยันและสมัครสมาชิก</button>
-            <button type="button" class="btn btn-ghost btn-full" style="margin-top:8px" onclick="backToRegStep1()">← แก้ไขข้อมูล</button>
-          </div>
+
+            <!-- รหัสผ่าน -->
+            <div class="form-group">
+              <label>รหัสผ่าน *</label>
+              <div class="input-eye-wrap">
+                <input type="password" id="registerPassword" placeholder="อย่างน้อย 6 ตัวอักษร"
+                       autocomplete="new-password" oninput="validateRegField('pass'); validateRegField('pass2')" required>
+                <button type="button" class="eye-btn" onclick="togglePassVis('registerPassword', this)">👁</button>
+              </div>
+              <div class="strength-bar-wrap" id="strengthWrap" style="display:none">
+                <div class="strength-bar" id="strengthBar"></div>
+              </div>
+              <span class="field-hint" id="hint-pass"></span>
+            </div>
+
+            <!-- ยืนยันรหัสผ่าน -->
+            <div class="form-group">
+              <label>ยืนยันรหัสผ่าน *</label>
+              <div class="input-eye-wrap">
+                <input type="password" id="registerPassword2" placeholder="พิมพ์รหัสผ่านอีกครั้ง"
+                       autocomplete="new-password" oninput="validateRegField('pass2')" required>
+                <button type="button" class="eye-btn" onclick="togglePassVis('registerPassword2', this)">👁</button>
+              </div>
+              <span class="field-hint" id="hint-pass2"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="registerSubmitBtn">สมัครสมาชิก</button>
+          </form>
 
           <p class="auth-switch">มีบัญชีแล้ว? <button onclick="switchAuthTab('login')" class="link-btn">เข้าสู่ระบบ</button></p>
         </div>
