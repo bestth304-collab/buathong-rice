@@ -446,20 +446,21 @@ app.get('/api/admin/products', requireAdmin, (req, res) =>
   res.json(db.getAll('SELECT * FROM products ORDER BY id DESC')));
 
 app.post('/api/admin/products', requireAdmin, (req, res) => {
-  const { name, description, price, unit, stock, image_url, category } = req.body;
+  const { name, description, price, unit, stock, image_url, category, badge } = req.body;
   if (!name || price === undefined) return res.status(400).json({ error: 'กรุณากรอกชื่อและราคา' });
-  db.run('INSERT INTO products (name,description,price,unit,stock,image_url,category) VALUES (?,?,?,?,?,?,?)',
-    [name, description || '', parseFloat(price), unit || 'กิโลกรัม', parseInt(stock) || 0, image_url || '', category || 'ข้าวสาร']);
-  res.status(201).json(db.getOne('SELECT * FROM products WHERE id=?', [db.lastId()]));
+  db.run('INSERT INTO products (name,description,price,unit,stock,image_url,category,badge) VALUES (?,?,?,?,?,?,?,?)',
+    [name, description || '', parseFloat(price), unit || 'กิโลกรัม', parseInt(stock) || 0, image_url || '', category || 'ข้าวสาร', badge || '']);
+  const newProduct = db.getOne('SELECT * FROM products WHERE name=? ORDER BY id DESC LIMIT 1', [name]);
+  res.status(201).json(newProduct);
 });
 
 app.put('/api/admin/products/:id', requireAdmin, (req, res) => {
   if (!db.getOne('SELECT id FROM products WHERE id=?', [req.params.id]))
     return res.status(404).json({ error: 'ไม่พบสินค้า' });
-  const { name, description, price, unit, stock, image_url, category, active } = req.body;
-  db.run(`UPDATE products SET name=?,description=?,price=?,unit=?,stock=?,image_url=?,category=?,active=?,
+  const { name, description, price, unit, stock, image_url, category, active, badge } = req.body;
+  db.run(`UPDATE products SET name=?,description=?,price=?,unit=?,stock=?,image_url=?,category=?,active=?,badge=?,
     updated_at=datetime('now','localtime') WHERE id=?`,
-    [name, description || '', parseFloat(price), unit, parseInt(stock), image_url || '', category, active ? 1 : 0, req.params.id]);
+    [name, description || '', parseFloat(price), unit, parseInt(stock), image_url || '', category, active ? 1 : 0, badge || '', req.params.id]);
   res.json(db.getOne('SELECT * FROM products WHERE id=?', [req.params.id]));
 });
 

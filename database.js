@@ -101,6 +101,7 @@ async function init() {
     'ALTER TABLE orders ADD COLUMN user_id INTEGER',
     'ALTER TABLE orders ADD COLUMN payment_method TEXT DEFAULT \'pending\'',
     'ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT \'unpaid\'',
+    'ALTER TABLE products ADD COLUMN badge TEXT DEFAULT \'\'',
   ];
   for (const sql of migrations) {
     try { db.run(sql); } catch {}

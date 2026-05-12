@@ -153,6 +153,10 @@
 .badge-warning { background: #fffbeb; color: #92400e; }
 .badge-info { background: #ebf8ff; color: #2b6cb0; }
 .badge-gray { background: #f5f5f5; color: #666; }
+.badge-bestseller  { background: #fff5f0; color: #c53030; }
+.badge-new         { background: #f0fff4; color: #276749; }
+.badge-sale        { background: #fffff0; color: #744210; }
+.badge-recommended { background: #ebf8ff; color: #2b6cb0; }
 .table-actions { display: flex; gap: 8px; }
 
 /* ─── Orders ─────────────────────────────────────────────────────────────────── */

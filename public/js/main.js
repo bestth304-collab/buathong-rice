@@ -46,13 +46,15 @@ function renderProducts(list) {
     const qty = cartItem ? cartItem.qty : 1;
     const out = p.stock === 0;
     const wished = wishIds.has(p.id);
+    const STICKER = { bestseller: '🔥 ขายดี', new: '✨ มาใหม่', sale: '🏷️ ลดราคา', recommended: '⭐ แนะนำ' };
     return `
     <div class="product-card" id="product-${p.id}">
       <div class="product-img">
         <img src="${p.image_url || 'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=400'}"
              alt="${p.name}" loading="lazy"
              onerror="this.src='https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=400'">
-        <div class="product-badge ${out ? 'out' : ''}">${out ? 'สินค้าหมด' : 'มีสินค้า'}</div>
+        ${p.badge && STICKER[p.badge] ? `<div class="product-sticker sticker-${p.badge}">${STICKER[p.badge]}</div>` : ''}
+        ${out ? `<div class="product-badge out">สินค้าหมด</div>` : ''}
         <button class="wish-btn ${wished ? 'wished' : ''}" data-wish-id="${p.id}"
           onclick="toggleWishlist(${p.id})" title="${wished ? 'เอาออกจากสินค้าที่ถูกใจ' : 'เพิ่มในสินค้าที่ถูกใจ'}">♥</button>
       </div>

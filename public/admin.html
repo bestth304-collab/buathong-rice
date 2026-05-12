@@ -271,10 +271,22 @@
               <input type="number" id="pStock" placeholder="0" min="0" required>
             </div>
           </div>
-          <div class="form-group">
-            <label>URL รูปภาพ</label>
-            <input type="url" id="pImage" placeholder="https://..." oninput="previewImage()">
-            <img id="imagePreview" src="" alt="preview" style="display:none;margin-top:10px;border-radius:8px;max-height:140px;object-fit:cover;">
+          <div class="form-row">
+            <div class="form-group">
+              <label>URL รูปภาพ</label>
+              <input type="url" id="pImage" placeholder="https://..." oninput="previewImage()">
+              <img id="imagePreview" src="" alt="preview" style="display:none;margin-top:10px;border-radius:8px;max-height:140px;object-fit:cover;">
+            </div>
+            <div class="form-group">
+              <label>แท็กสินค้า (สติกเกอร์)</label>
+              <select id="pBadge">
+                <option value="">— ไม่มีแท็ก —</option>
+                <option value="bestseller">🔥 ขายดี</option>
+                <option value="new">✨ มาใหม่</option>
+                <option value="sale">🏷️ ลดราคา</option>
+                <option value="recommended">⭐ แนะนำ</option>
+              </select>
+            </div>
           </div>
           <div class="form-group" id="activeGroup" style="display:none">
             <label class="toggle-label">

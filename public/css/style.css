@@ -176,10 +176,19 @@ a { text-decoration: none; color: inherit; }
 .product-card:hover .product-img img { transform: scale(1.05); }
 .product-badge {
   position: absolute; top: 12px; left: 12px;
-  background: var(--gold); color: #fff; padding: 4px 12px;
+  background: #e53e3e; color: #fff; padding: 4px 12px;
   border-radius: 50px; font-size: 11px; font-weight: 700;
 }
-.product-badge.out { background: #e53e3e; }
+.product-sticker {
+  position: absolute; top: 12px; right: 12px;
+  padding: 4px 10px; border-radius: 50px;
+  font-size: 11px; font-weight: 700; color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+.sticker-bestseller  { background: linear-gradient(135deg,#e53e3e,#dd6b20); }
+.sticker-new         { background: linear-gradient(135deg,#38a169,#2f855a); }
+.sticker-sale        { background: linear-gradient(135deg,#d69e2e,#b7791f); }
+.sticker-recommended { background: linear-gradient(135deg,#3182ce,#2b6cb0); }
 .product-body { padding: 18px; flex: 1; display: flex; flex-direction: column; }
 .product-cat { font-size: 11px; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
 .product-name { font-size: 16px; font-weight: 700; color: var(--brown); margin-bottom: 8px; line-height: 1.4; }

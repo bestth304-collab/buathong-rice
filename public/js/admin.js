@@ -192,6 +192,12 @@ function renderProductTable(list) {
     tbody.innerHTML = '<tr><td colspan="7" class="loading">ไม่พบสินค้า</td></tr>';
     return;
   }
+  const BADGE_META = {
+    bestseller:  { label: '🔥 ขายดี',   cls: 'badge-bestseller' },
+    new:         { label: '✨ มาใหม่',  cls: 'badge-new' },
+    sale:        { label: '🏷️ ลดราคา', cls: 'badge-sale' },
+    recommended: { label: '⭐ แนะนำ',  cls: 'badge-recommended' },
+  };
   tbody.innerHTML = list.map(p => `
     <tr>
       <td>${p.image_url
@@ -199,7 +205,10 @@ function renderProductTable(list) {
           + ` alt="">`
         : `<div class="product-thumb-placeholder">🌾</div>`}
       </td>
-      <td><strong>${p.name}</strong></td>
+      <td>
+        <strong>${p.name}</strong>
+        ${p.badge && BADGE_META[p.badge] ? `<span class="badge ${BADGE_META[p.badge].cls}" style="margin-left:6px">${BADGE_META[p.badge].label}</span>` : ''}
+      </td>
       <td><span class="badge badge-gray">${p.category}</span></td>
       <td><strong>฿${p.price.toLocaleString()}</strong> / ${p.unit}</td>
       <td>
@@ -249,6 +258,7 @@ function openProductModal(id = null) {
     document.getElementById('pUnit').value = p.unit;
     document.getElementById('pStock').value = p.stock;
     document.getElementById('pImage').value = p.image_url || '';
+    document.getElementById('pBadge').value = p.badge || '';
     document.getElementById('pActive').checked = !!p.active;
     document.getElementById('activeGroup').style.display = 'block';
     if (p.image_url) {
@@ -285,6 +295,7 @@ async function saveProduct(e) {
     unit: document.getElementById('pUnit').value,
     stock: parseInt(document.getElementById('pStock').value),
     image_url: document.getElementById('pImage').value,
+    badge: document.getElementById('pBadge').value,
     active: document.getElementById('pActive').checked,
   };
 
