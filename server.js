@@ -221,17 +221,24 @@ app.post('/api/user/google', async (req, res) => {
 });
 
 app.post('/api/user/facebook', (req, res) => {
-  const { fbId, name, email, picture } = req.body;
-  if (!fbId || !name) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
-  let user = db.getOne('SELECT * FROM users WHERE facebook_id = ?', [fbId]);
-  if (!user && email) user = db.getOne('SELECT * FROM users WHERE email = ?', [email]);
-  if (user) {
-    if (!user.facebook_id) db.run('UPDATE users SET facebook_id=?,avatar_url=? WHERE id=?', [fbId, picture || '', user.id]);
-  } else {
-    db.run('INSERT INTO users (name,email,facebook_id,avatar_url) VALUES (?,?,?,?)', [name, email || null, fbId, picture || '']);
-    user = db.getOne('SELECT * FROM users WHERE id = ?', [db.lastId()]);
+  try {
+    const { fbId, name, email, picture } = req.body;
+    if (!fbId || !name) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+    let user = db.getOne('SELECT * FROM users WHERE facebook_id = ?', [fbId]);
+    if (!user && email) user = db.getOne('SELECT * FROM users WHERE email = ?', [email]);
+    if (user) {
+      if (!user.facebook_id) db.run('UPDATE users SET facebook_id=?,avatar_url=? WHERE id=?', [fbId, picture || '', user.id]);
+      user = db.getOne('SELECT * FROM users WHERE id = ?', [user.id]);
+    } else {
+      db.run('INSERT INTO users (name,email,facebook_id,avatar_url) VALUES (?,?,?,?)', [name, email || null, fbId, picture || '']);
+      user = db.getOne('SELECT * FROM users WHERE facebook_id = ?', [fbId]); // หลีกเลี่ยง lastId()
+    }
+    if (!user) throw new Error('User lookup failed after insert');
+    res.json({ token: userToken(user), name: user.name, id: user.id });
+  } catch (err) {
+    console.error('[Facebook Login]', err.message);
+    res.status(500).json({ error: 'Facebook login ไม่สำเร็จ: ' + err.message });
   }
-  res.json({ token: userToken(user), name: user.name, id: user.id });
 });
 
 app.get('/api/user/profile', requireUser, (req, res) => {
