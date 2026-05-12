@@ -77,11 +77,38 @@ app.get('/api/config', (req, res) => {
 });
 
 // ─── Admin Auth ───────────────────────────────────────────────────────────────
+const adminAttemptStore = new Map(); // username → { attempts, lockedUntil }
+
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'กรุณากรอกข้อมูล' });
+
+  const key     = username.toLowerCase().trim();
+  const attempt = adminAttemptStore.get(key);
+  if (attempt && attempt.lockedUntil > Date.now()) {
+    const secs = Math.ceil((attempt.lockedUntil - Date.now()) / 1000);
+    const mins = Math.floor(secs / 60);
+    const s    = secs % 60;
+    return res.status(429).json({
+      error: `เข้าสู่ระบบผิดพลาดเกินกำหนด กรุณารอ ${mins > 0 ? mins + ' นาที ' : ''}${s} วินาที`,
+      retryAfter: secs,
+    });
+  }
+
   const admin = db.getOne('SELECT * FROM admins WHERE username = ?', [username]);
-  if (!admin || !bcrypt.compareSync(password, admin.password))
-    return res.status(401).json({ error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+  if (!admin || !bcrypt.compareSync(password, admin.password)) {
+    const cur = adminAttemptStore.get(key) || { attempts: 0, lockedUntil: 0 };
+    cur.attempts += 1;
+    if (cur.attempts >= 3) {
+      cur.lockedUntil = Date.now() + 5 * 60_000;
+      adminAttemptStore.set(key, cur);
+      return res.status(429).json({ error: 'เข้าสู่ระบบผิดพลาดเกิน 3 ครั้ง บัญชีถูกระงับชั่วคราว 5 นาที', retryAfter: 300 });
+    }
+    adminAttemptStore.set(key, cur);
+    return res.status(401).json({ error: `ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง (เหลืออีก ${3 - cur.attempts} ครั้ง)` });
+  }
+
+  adminAttemptStore.delete(key);
   const token = jwt.sign({ type: 'admin', id: admin.id, username: admin.username, name: admin.name }, JWT_SECRET, { expiresIn: '8h' });
   res.json({ token, name: admin.name });
 });

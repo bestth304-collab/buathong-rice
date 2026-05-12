@@ -57,9 +57,32 @@ async function verifyToken() {
   return false;
 }
 
+let _adminCooldownTimer = null;
+
+function startAdminCooldown(seconds) {
+  const btn   = document.getElementById('loginBtn');
+  const errEl = document.getElementById('loginError');
+  let remaining = seconds;
+  if (_adminCooldownTimer) clearInterval(_adminCooldownTimer);
+  btn.disabled = true;
+  _adminCooldownTimer = setInterval(() => {
+    remaining--;
+    const m = Math.floor(remaining / 60), s = remaining % 60;
+    btn.textContent = `รอ ${m > 0 ? m + ':' : ''}${String(s).padStart(2,'0')}`;
+    errEl.textContent = `🔒 บัญชีถูกระงับชั่วคราว กรุณารอ ${m > 0 ? m + ' นาที ' : ''}${s} วินาที`;
+    if (remaining <= 0) {
+      clearInterval(_adminCooldownTimer);
+      _adminCooldownTimer = null;
+      btn.disabled = false;
+      btn.textContent = 'เข้าสู่ระบบ';
+      errEl.style.display = 'none';
+    }
+  }, 1000);
+}
+
 async function doLogin(e) {
   e.preventDefault();
-  const btn = document.getElementById('loginBtn');
+  const btn   = document.getElementById('loginBtn');
   const errEl = document.getElementById('loginError');
   btn.disabled = true;
   btn.textContent = 'กำลังเข้าสู่ระบบ...';
@@ -74,14 +97,19 @@ async function doLogin(e) {
     })
   });
   const data = await res.json();
-  btn.disabled = false;
-  btn.textContent = 'เข้าสู่ระบบ';
 
   if (!res.ok) {
     errEl.textContent = data.error || 'เกิดข้อผิดพลาด';
     errEl.style.display = 'block';
+    if (res.status === 429 && data.retryAfter) {
+      startAdminCooldown(data.retryAfter);
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'เข้าสู่ระบบ';
+    }
     return;
   }
+
   token = data.token;
   localStorage.setItem('btAdminToken', token);
   document.getElementById('adminName').textContent = data.name;
