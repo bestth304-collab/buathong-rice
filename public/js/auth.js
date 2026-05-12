@@ -87,8 +87,97 @@ function closeAuthModal() {
 function switchAuthTab(tab) {
   document.getElementById('loginTab').classList.toggle('active', tab === 'login');
   document.getElementById('registerTab').classList.toggle('active', tab === 'register');
-  document.getElementById('loginPanel').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('loginPanel').style.display    = tab === 'login'    ? 'block' : 'none';
   document.getElementById('registerPanel').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('forgotPanel').style.display   = 'none';
+  document.getElementById('loginError').style.display    = 'none';
+  document.getElementById('registerError').style.display = 'none';
+}
+
+// ─── Forgot Password ──────────────────────────────────────────────────────────
+function showForgotPanel() {
+  document.getElementById('loginPanel').style.display    = 'none';
+  document.getElementById('registerPanel').style.display = 'none';
+  document.getElementById('forgotPanel').style.display   = 'block';
+  document.getElementById('forgotStep1').style.display   = 'block';
+  document.getElementById('forgotStep2').style.display   = 'none';
+  document.getElementById('forgotError').style.display   = 'none';
+  document.getElementById('forgotEmail').value = '';
+  setFieldHint('forgotEmail', '', null);
+  document.getElementById('forgotEmail').focus();
+}
+
+function showForgotStep(n) {
+  document.getElementById('forgotStep1').style.display = n === 1 ? 'block' : 'none';
+  document.getElementById('forgotStep2').style.display = n === 2 ? 'block' : 'none';
+  document.getElementById('forgotError').style.display = 'none';
+}
+
+async function sendResetCode(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('forgotError');
+  const btn   = document.getElementById('sendResetBtn');
+  errEl.style.display = 'none';
+
+  const email = document.getElementById('forgotEmail').value.trim();
+  if (!email) { errEl.textContent = 'กรุณากรอกอีเมล'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+  try {
+    const res  = await fetch('/api/user/forgot-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    document.getElementById('resetEmailDisplay').textContent = email;
+    document.getElementById('resetCode').value = '';
+    document.getElementById('resetNewPass').value = '';
+    document.getElementById('resetNewPass2').value = '';
+
+    if (data._dev_code) {
+      document.getElementById('resetDevCode').textContent = data._dev_code;
+      document.getElementById('resetDevHint').style.display = 'block';
+    } else {
+      document.getElementById('resetDevHint').style.display = 'none';
+    }
+    showForgotStep(2);
+    document.getElementById('resetCode').focus();
+  } catch (err) {
+    errEl.textContent = err.message; errEl.style.display = 'block';
+  } finally { btn.disabled = false; btn.textContent = '📧 ส่งรหัสยืนยัน'; }
+}
+
+async function doResetPassword(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('forgotError');
+  const btn   = document.getElementById('resetSubmitBtn');
+  errEl.style.display = 'none';
+
+  const email = document.getElementById('resetEmailDisplay').textContent.trim();
+  const code  = document.getElementById('resetCode').value.trim();
+  const pass  = document.getElementById('resetNewPass').value;
+  const pass2 = document.getElementById('resetNewPass2').value;
+
+  if (!/^\d{6}$/.test(code)) { errEl.textContent = 'กรุณากรอกรหัส 6 หลัก'; errEl.style.display = 'block'; return; }
+  if (pass.length < 6) { errEl.textContent = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'; errEl.style.display = 'block'; return; }
+  if (pass !== pass2)  { errEl.textContent = 'รหัสผ่านไม่ตรงกัน'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'กำลังเปลี่ยนรหัสผ่าน...';
+  try {
+    const res  = await fetch('/api/user/reset-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    switchAuthTab('login');
+    showToast('🔐 เปลี่ยนรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบใหม่');
+  } catch (err) {
+    errEl.textContent = err.message; errEl.style.display = 'block';
+  } finally { btn.disabled = false; btn.textContent = '🔐 เปลี่ยนรหัสผ่าน'; }
 }
 
 // ─── Phone Login ──────────────────────────────────────────────────────────────
@@ -165,7 +254,7 @@ function validateRegField(field) {
   }
 
   if (field === 'email') {
-    if (!email) return (markInput('registerEmail', null), setFieldHint('email', '', null));
+    if (!email) return (markInput('registerEmail', false), setFieldHint('email', '❌ กรุณากรอกอีเมล', false));
     const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRx.test(email)) {
       markInput('registerEmail', false);
@@ -246,14 +335,13 @@ function validateAllRegFields() {
   const pass  = document.getElementById('registerPassword')?.value     || '';
   const pass2 = document.getElementById('registerPassword2')?.value    || '';
 
+  const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (name.length < 2) return { ok: false, msg: 'กรุณากรอกชื่อ-นามสกุล' };
   if (!/^0\d{9}$/.test(phone)) return { ok: false, msg: 'เบอร์โทรต้องเป็น 0 ตามด้วยตัวเลข 9 หลัก' };
-  if (email) {
-    const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const domain  = email.split('@')[1]?.toLowerCase();
-    if (!emailRx.test(email) || !ALLOWED_EMAIL_DOMAINS.includes(domain))
-      return { ok: false, msg: 'รูปแบบอีเมลไม่ถูกต้อง หรือโดเมนไม่รองรับ' };
-  }
+  if (!email) return { ok: false, msg: 'กรุณากรอกอีเมล (จำเป็นสำหรับกู้คืนรหัสผ่าน)' };
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!emailRx.test(email) || !ALLOWED_EMAIL_DOMAINS.includes(domain))
+    return { ok: false, msg: 'รูปแบบอีเมลไม่ถูกต้อง หรือโดเมนไม่รองรับ' };
   if (pass.length < 6) return { ok: false, msg: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' };
   if (pass !== pass2)  return { ok: false, msg: 'รหัสผ่านไม่ตรงกัน' };
   return { ok: true };

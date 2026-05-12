@@ -10,11 +10,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'buathong-rice-secret-2024';
 
-// ─── OTP Store (in-memory, resets on restart) ────────────────────────────────
-// phone → { otp, expiresAt, sentAt, attempts }
-const otpStore = new Map();
-// ลบ OTP ที่หมดอายุทุก 10 นาที
-setInterval(() => { const now = Date.now(); otpStore.forEach((v, k) => { if (now > v.expiresAt) otpStore.delete(k); }); }, 10 * 60_000);
+// ─── In-memory stores (reset on restart) ─────────────────────────────────────
+const otpStore   = new Map(); // phone → { otp, expiresAt, sentAt, attempts }
+const resetStore = new Map(); // email → { code, expiresAt, sentAt }
+setInterval(() => {
+  const now = Date.now();
+  otpStore.forEach((v, k)   => { if (now > v.expiresAt) otpStore.delete(k); });
+  resetStore.forEach((v, k) => { if (now > v.expiresAt) resetStore.delete(k); });
+}, 10 * 60_000);
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || '';
 const PROMPTPAY_ID = process.env.PROMPTPAY_ID || '0812345678';
@@ -123,6 +126,56 @@ app.post('/api/user/register', (req, res) => {
   const user = db.getOne('SELECT * FROM users WHERE phone = ?', [phone]);
   if (!user) return res.status(500).json({ error: 'สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่' });
   res.status(201).json({ token: userToken(user), name: user.name, id: user.id });
+});
+
+// ─── Forgot / Reset Password ──────────────────────────────────────────────────
+app.post('/api/user/forgot-password', (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'กรุณากรอกอีเมล' });
+  const user = db.getOne('SELECT id FROM users WHERE email=?', [email.toLowerCase().trim()]);
+  if (!user) return res.status(404).json({ error: 'ไม่พบบัญชีที่ใช้อีเมลนี้' });
+
+  const existing = resetStore.get(email);
+  if (existing && Date.now() - existing.sentAt < 60_000) {
+    const wait = Math.ceil((60_000 - (Date.now() - existing.sentAt)) / 1000);
+    return res.status(429).json({ error: `กรุณารอ ${wait} วินาทีก่อนส่งใหม่` });
+  }
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  resetStore.set(email, { code, expiresAt: Date.now() + 15 * 60_000, sentAt: Date.now() });
+  console.log(`[RESET] 📧 ${email} → ${code}`);
+
+  // TODO: ส่งอีเมลจริงผ่าน Nodemailer / SendGrid / Resend:
+  //   await transporter.sendMail({ to: email, subject: 'รีเซ็ตรหัสผ่านบัวทองไรซ์', text: `รหัสของคุณคือ ${code} (หมดอายุใน 15 นาที)` });
+
+  const isDev = process.env.NODE_ENV !== 'production';
+  res.json({ ok: true, ...(isDev && { _dev_code: code }) });
+});
+
+app.post('/api/user/reset-password', (req, res) => {
+  const { email, code, password } = req.body;
+  if (!email || !code || !password) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+  if (password.length < 6) return res.status(400).json({ error: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' });
+
+  const record = resetStore.get(email);
+  if (!record) return res.status(400).json({ error: 'ไม่พบรหัสรีเซ็ต หรือหมดอายุแล้ว กรุณาขอใหม่' });
+  if (Date.now() > record.expiresAt) {
+    resetStore.delete(email);
+    return res.status(400).json({ error: 'รหัสหมดอายุแล้ว (15 นาที) กรุณาขอใหม่' });
+  }
+  record.attempts = (record.attempts || 0) + 1;
+  if (record.attempts > 5) {
+    resetStore.delete(email);
+    return res.status(400).json({ error: 'ใส่รหัสผิดเกิน 5 ครั้ง กรุณาขอรหัสใหม่' });
+  }
+  if (record.code !== code.trim())
+    return res.status(400).json({ error: `รหัสยืนยันไม่ถูกต้อง (เหลือ ${5 - record.attempts} ครั้ง)` });
+
+  const user = db.getOne('SELECT id FROM users WHERE email=?', [email]);
+  if (!user) return res.status(404).json({ error: 'ไม่พบบัญชีผู้ใช้' });
+  db.run('UPDATE users SET password=? WHERE email=?', [bcrypt.hashSync(password, 10), email]);
+  resetStore.delete(email);
+  res.json({ ok: true });
 });
 
 app.post('/api/user/login', (req, res) => {

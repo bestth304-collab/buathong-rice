@@ -203,10 +203,69 @@
           <div id="loginError" class="auth-error" style="display:none"></div>
           <form id="loginForm" onsubmit="doPhoneLogin(event)">
             <div class="form-group"><label>ชื่อผู้ใช้ / อีเมล / เบอร์โทร</label><input type="text" id="loginPhone" placeholder="email@example.com หรือ 0812345678" required autocomplete="username"></div>
-            <div class="form-group"><label>รหัสผ่าน</label><input type="password" id="loginPassword" placeholder="รหัสผ่าน" required></div>
+            <div class="form-group">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <label style="margin:0">รหัสผ่าน</label>
+                <button type="button" class="link-btn" style="font-size:13px;font-weight:400" onclick="showForgotPanel()">ลืมรหัสผ่าน?</button>
+              </div>
+              <input type="password" id="loginPassword" placeholder="รหัสผ่าน" required>
+            </div>
             <button type="submit" class="btn btn-primary btn-full" id="loginSubmitBtn">เข้าสู่ระบบ</button>
           </form>
           <p class="auth-switch">ยังไม่มีบัญชี? <button onclick="switchAuthTab('register')" class="link-btn">สมัครสมาชิก</button></p>
+        </div>
+
+        <!-- Forgot Password Panel -->
+        <div id="forgotPanel" style="display:none">
+          <div id="forgotError" class="auth-error" style="display:none"></div>
+
+          <!-- ขั้นที่ 1: กรอกอีเมล -->
+          <div id="forgotStep1">
+            <p style="font-size:14px;color:var(--text-light);margin:0 0 16px">กรอกอีเมลที่ใช้สมัครสมาชิก เราจะส่งรหัสยืนยันไปให้</p>
+            <form onsubmit="sendResetCode(event)" novalidate>
+              <div class="form-group">
+                <label>อีเมล *</label>
+                <input type="text" id="forgotEmail" placeholder="example@gmail.com" autocomplete="email" required>
+                <span class="field-hint" id="hint-forgotEmail"></span>
+              </div>
+              <button type="submit" class="btn btn-primary btn-full" id="sendResetBtn">📧 ส่งรหัสยืนยัน</button>
+            </form>
+          </div>
+
+          <!-- ขั้นที่ 2: กรอกรหัส + รหัสผ่านใหม่ -->
+          <div id="forgotStep2" style="display:none">
+            <div id="resetDevHint" class="otp-demo-hint" style="display:none;margin-bottom:14px">
+              🧪 โหมดทดสอบ — รหัสของคุณคือ <strong id="resetDevCode"></strong>
+            </div>
+            <p style="font-size:14px;color:var(--text-light);margin:0 0 16px">
+              ส่งรหัสยืนยันไปยัง <strong id="resetEmailDisplay"></strong> แล้ว (หมดอายุใน 15 นาที)
+            </p>
+            <form onsubmit="doResetPassword(event)" novalidate>
+              <div class="form-group">
+                <label>รหัสยืนยัน 6 หลัก *</label>
+                <input type="text" id="resetCode" class="otp-input" placeholder="000000"
+                       maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+              </div>
+              <div class="form-group">
+                <label>รหัสผ่านใหม่ *</label>
+                <div class="input-eye-wrap">
+                  <input type="password" id="resetNewPass" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="new-password">
+                  <button type="button" class="eye-btn" onclick="togglePassVis('resetNewPass', this)">👁</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>ยืนยันรหัสผ่านใหม่ *</label>
+                <div class="input-eye-wrap">
+                  <input type="password" id="resetNewPass2" placeholder="พิมพ์รหัสผ่านอีกครั้ง" autocomplete="new-password">
+                  <button type="button" class="eye-btn" onclick="togglePassVis('resetNewPass2', this)">👁</button>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-full" id="resetSubmitBtn">🔐 เปลี่ยนรหัสผ่าน</button>
+            </form>
+            <button type="button" class="btn btn-ghost btn-full" style="margin-top:8px" onclick="showForgotStep(1)">← ส่งรหัสใหม่</button>
+          </div>
+
+          <p class="auth-switch"><button onclick="switchAuthTab('login')" class="link-btn">← กลับเข้าสู่ระบบ</button></p>
         </div>
 
         <!-- Register Panel -->
@@ -234,9 +293,9 @@
 
             <!-- อีเมล -->
             <div class="form-group">
-              <label>อีเมล <span style="font-weight:400;color:var(--text-light)">(ไม่บังคับ)</span></label>
+              <label>อีเมล * <span style="font-weight:400;color:var(--text-light);font-size:12px">(ใช้กู้คืนรหัสผ่าน)</span></label>
               <input type="text" id="registerEmail" placeholder="example@gmail.com"
-                     autocomplete="email" oninput="validateRegField('email')">
+                     autocomplete="email" oninput="validateRegField('email')" required>
               <span class="field-hint" id="hint-email"></span>
             </div>
 
