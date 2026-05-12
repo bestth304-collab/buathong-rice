@@ -81,6 +81,19 @@ async function init() {
       created_at TEXT DEFAULT (datetime('now','localtime')),
       PRIMARY KEY (user_id, product_id)
     );
+    CREATE TABLE IF NOT EXISTS user_saved_cards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      label TEXT DEFAULT 'บัตรของฉัน',
+      card_brand TEXT NOT NULL DEFAULT 'Other',
+      last_four TEXT NOT NULL,
+      expiry TEXT NOT NULL,
+      holder_name TEXT NOT NULL,
+      card_token TEXT DEFAULT '',
+      is_default INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
   `);
 
   // migrate: add columns if missing

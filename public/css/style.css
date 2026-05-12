@@ -424,6 +424,52 @@ a { text-decoration: none; color: inherit; }
 .auth-switch { text-align: center; font-size: 14px; color: var(--text-light); margin-top: 16px; }
 .link-btn { background: none; border: none; color: var(--gold); font-weight: 700; cursor: pointer; font-size: 14px; font-family: 'Sarabun', sans-serif; }
 .link-btn:hover { text-decoration: underline; }
+.link-btn:disabled { color: var(--text-light); cursor: default; text-decoration: none; opacity: 0.6; }
+
+/* ═══ REGISTER VALIDATION ═══ */
+/* field hint text */
+.field-hint { display: block; font-size: 12px; min-height: 18px; margin-top: 4px; transition: color .2s; }
+.hint-ok  { color: #16a34a; }
+.hint-err { color: #dc2626; }
+
+/* input border states */
+.form-group input.input-ok  { border-color: #16a34a; background: #f0fdf4; }
+.form-group input.input-err { border-color: #dc2626; background: #fff5f5; }
+.form-group input.input-ok:focus  { box-shadow: 0 0 0 3px rgba(22,163,74,.15); }
+.form-group input.input-err:focus { box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+
+/* password strength bar */
+.strength-bar-wrap { height: 6px; background: #e5e7eb; border-radius: 4px; margin-top: 6px; overflow: hidden; }
+.strength-bar { height: 100%; border-radius: 4px; width: 0; transition: width .3s, background .3s; }
+.strength-bar.str-1 { width: 20%; background: #dc2626; }
+.strength-bar.str-2 { width: 40%; background: #f97316; }
+.strength-bar.str-3 { width: 60%; background: #eab308; }
+.strength-bar.str-4 { width: 80%; background: #22c55e; }
+.strength-bar.str-5 { width: 100%; background: #16a34a; }
+
+/* password eye toggle */
+.input-eye-wrap { position: relative; display: flex; align-items: center; }
+.input-eye-wrap input { flex: 1; padding-right: 42px; }
+.eye-btn {
+  position: absolute; right: 10px;
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; padding: 0; line-height: 1;
+  color: var(--text-light); transition: opacity .15s;
+}
+.eye-btn:hover { opacity: .7; }
+
+/* ═══ OTP VERIFY UI ═══ */
+.otp-info-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 14px 16px; margin-bottom: 4px; }
+.otp-phone-display { font-size: 14px; color: #0369a1; }
+.otp-phone-display strong { color: #0c4a6e; }
+.otp-demo-hint { margin-top: 8px; padding: 8px 12px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; font-size: 13px; color: #92400e; }
+.otp-demo-hint strong { font-size: 20px; letter-spacing: 6px; color: #b45309; font-family: 'Courier New', monospace; }
+.otp-input { font-size: 28px; font-weight: 700; letter-spacing: 10px; text-align: center; font-family: 'Courier New', monospace; padding: 12px 16px; border: 2px solid var(--border); border-radius: 10px; width: 100%; box-sizing: border-box; transition: border-color .2s; }
+.otp-input:focus { border-color: var(--gold); outline: none; box-shadow: 0 0 0 3px rgba(212,160,23,.15); }
+.otp-meta { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 16px; font-size: 13px; }
+.otp-timer { color: var(--text-light); }
+.btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-light); border-radius: 10px; padding: 10px 20px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .2s; width: 100%; }
+.btn-ghost:hover { background: var(--bg); }
 
 /* ═══ PROFILE FULL-PAGE ═══ */
 #profileModal {
@@ -539,6 +585,80 @@ a { text-decoration: none; color: inherit; }
 .pm-info { flex: 1; }
 .pm-name { font-size: 15px; font-weight: 700; color: var(--text); }
 .pm-desc { font-size: 13px; color: var(--text-light); }
+
+/* ─── Saved Cards ─────────────────────────────────────────────────────────── */
+.saved-card-item {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 14px; position: relative;
+}
+.saved-card-chip {
+  flex: 1; border-radius: 16px; padding: 18px 22px;
+  background: linear-gradient(135deg, #2c3e50 0%, #4a6075 100%);
+  color: #fff; min-width: 0; position: relative; overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+}
+.saved-card-chip::before {
+  content: ''; position: absolute; right: -30px; top: -30px;
+  width: 120px; height: 120px; border-radius: 50%;
+  background: rgba(255,255,255,.07);
+}
+.saved-card-chip.visa       { background: linear-gradient(135deg, #1a3c6b 0%, #2563eb 100%); }
+.saved-card-chip.mastercard { background: linear-gradient(135deg, #7c1d1d 0%, #dc2626 100%); }
+.saved-card-chip.amex       { background: linear-gradient(135deg, #064e3b 0%, #059669 100%); }
+.saved-card-chip.jcb        { background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%); }
+.saved-card-chip.discover   { background: linear-gradient(135deg, #78350f 0%, #d97706 100%); }
+.sc-item-sc-default .saved-card-chip,
+.saved-card-item.sc-default .saved-card-chip { box-shadow: 0 0 0 2.5px var(--gold), 0 4px 16px rgba(0,0,0,.18); }
+.sc-top  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.sc-label-text { font-size: 12px; opacity: .75; }
+.sc-brand-badge {
+  font-size: 11px; font-weight: 900; letter-spacing: 1px;
+  background: rgba(255,255,255,.2); padding: 3px 8px; border-radius: 4px;
+  font-family: 'Courier New', monospace;
+}
+.sc-number { font-size: 18px; letter-spacing: 4px; font-family: 'Courier New', monospace; margin-bottom: 16px; }
+.sc-bottom { display: flex; justify-content: space-between; }
+.sc-sub  { font-size: 10px; opacity: .65; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
+.sc-val  { font-size: 13px; font-weight: 600; }
+.sc-default-badge {
+  margin-top: 10px; font-size: 11px; color: var(--gold);
+  background: rgba(255,255,255,.12); display: inline-block;
+  padding: 2px 10px; border-radius: 20px;
+}
+.sc-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.btn-danger {
+  background: #fff5f5; border: 1px solid #fed7d7; color: #c53030;
+  border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+}
+.btn-danger:hover { background: #fed7d7; }
+
+/* Card Preview Mini (Add card form) */
+.card-preview-mini {
+  background: linear-gradient(135deg, #2c3e50, #4a6075);
+  border-radius: 16px; padding: 20px 24px; color: #fff;
+  margin-bottom: 20px; position: relative; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.2);
+}
+.card-preview-mini::before {
+  content: ''; position: absolute; right: -20px; top: -20px;
+  width: 110px; height: 110px; border-radius: 50%;
+  background: rgba(255,255,255,.08);
+}
+.card-preview-mini.visa       { background: linear-gradient(135deg, #1a3c6b, #2563eb); }
+.card-preview-mini.mastercard { background: linear-gradient(135deg, #7c1d1d, #dc2626); }
+.card-preview-mini.amex       { background: linear-gradient(135deg, #064e3b, #059669); }
+.card-preview-mini.jcb        { background: linear-gradient(135deg, #1e1b4b, #4f46e5); }
+.card-preview-mini.discover   { background: linear-gradient(135deg, #78350f, #d97706); }
+.cpm-brand { font-size: 13px; font-weight: 900; opacity: .85; margin-bottom: 10px; letter-spacing: 1px; }
+.cpm-num   { font-size: 20px; letter-spacing: 5px; font-family: 'Courier New', monospace; margin-bottom: 18px; }
+.cpm-row   { display: flex; justify-content: space-between; }
+.cpm-label { font-size: 10px; opacity: .65; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; }
+.cpm-val   { font-size: 14px; font-weight: 600; }
+
+/* Misc form helpers */
+.form-hint { font-size: 12px; color: var(--text-light); margin: 0; }
+.check-label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 
 /* Wishlist grid */
 .wishlist-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 16px; }

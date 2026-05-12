@@ -81,6 +81,14 @@ function closeAuthModal() {
   document.getElementById('authModal').classList.remove('open');
   document.getElementById('loginForm').reset();
   document.getElementById('registerForm').reset();
+  // รีเซ็ต OTP step กลับไปขั้นที่ 1
+  clearInterval(_otpTimerInterval);
+  clearInterval(_resendInterval);
+  const s1 = document.getElementById('regStep1');
+  const s2 = document.getElementById('regStep2');
+  if (s1) s1.style.display = 'block';
+  if (s2) s2.style.display = 'none';
+  document.getElementById('registerError').style.display = 'none';
 }
 
 function switchAuthTab(tab) {
@@ -113,35 +121,291 @@ async function doPhoneLogin(e) {
   } finally { btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ'; }
 }
 
-// ─── Phone Register ───────────────────────────────────────────────────────────
-async function doPhoneRegister(e) {
+// ─── Register Field Validation ────────────────────────────────────────────────
+const ALLOWED_EMAIL_DOMAINS = [
+  'gmail.com','googlemail.com',
+  'hotmail.com','hotmail.co.th','hotmail.co.uk',
+  'outlook.com','outlook.co.th',
+  'yahoo.com','yahoo.co.th','yahoo.co.uk',
+  'live.com','live.co.th',
+  'msn.com','icloud.com','me.com','mac.com',
+  'protonmail.com','proton.me',
+  'aol.com','zoho.com',
+  'truecorp.co.th','dtac.co.th','ais.th',
+];
+
+function setFieldHint(id, msg, ok) {
+  const el = document.getElementById('hint-' + id);
+  if (!el) return;
+  el.textContent  = msg;
+  el.className    = 'field-hint ' + (ok === true ? 'hint-ok' : ok === false ? 'hint-err' : '');
+}
+
+function markInput(inputId, ok) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.classList.toggle('input-ok',  ok === true);
+  el.classList.toggle('input-err', ok === false);
+}
+
+function validateRegField(field) {
+  const name  = document.getElementById('registerName')?.value.trim()    || '';
+  const phone = document.getElementById('registerPhone')?.value.trim()   || '';
+  const email = document.getElementById('registerEmail')?.value.trim()   || '';
+  const pass  = document.getElementById('registerPassword')?.value       || '';
+  const pass2 = document.getElementById('registerPassword2')?.value      || '';
+
+  if (field === 'name') {
+    if (!name) return setFieldHint('name', '', null);
+    if (name.length < 2) { markInput('registerName', false); return setFieldHint('name', '❌ กรุณากรอกชื่อ-นามสกุล', false); }
+    markInput('registerName', true);
+    setFieldHint('name', '✅ ถูกต้อง', true);
+  }
+
+  if (field === 'phone') {
+    if (!phone) return setFieldHint('phone', '', null);
+    if (!/^\d+$/.test(phone))   { markInput('registerPhone', false); return setFieldHint('phone', '❌ กรอกตัวเลขเท่านั้น', false); }
+    if (!phone.startsWith('0')) { markInput('registerPhone', false); return setFieldHint('phone', '❌ เบอร์ต้องขึ้นต้นด้วย 0', false); }
+    if (phone.length < 10)      { markInput('registerPhone', false); return setFieldHint('phone', `⌛ ต้องการอีก ${10 - phone.length} หลัก`, false); }
+    markInput('registerPhone', true);
+    setFieldHint('phone', '✅ เบอร์ถูกต้อง', true);
+  }
+
+  if (field === 'email') {
+    if (!email) return (markInput('registerEmail', null), setFieldHint('email', '', null));
+    const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRx.test(email)) {
+      markInput('registerEmail', false);
+      return setFieldHint('email', '❌ รูปแบบอีเมลไม่ถูกต้อง (ต้องมี @)', false);
+    }
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (!ALLOWED_EMAIL_DOMAINS.includes(domain)) {
+      markInput('registerEmail', false);
+      return setFieldHint('email', `❌ โดเมนไม่รองรับ (ใช้ gmail.com, hotmail.com, yahoo.com ฯลฯ)`, false);
+    }
+    markInput('registerEmail', true);
+    setFieldHint('email', `✅ ${domain}`, true);
+  }
+
+  if (field === 'pass') {
+    const wrap = document.getElementById('strengthWrap');
+    const bar  = document.getElementById('strengthBar');
+    if (!pass) {
+      if (wrap) wrap.style.display = 'none';
+      markInput('registerPassword', null);
+      return setFieldHint('pass', '', null);
+    }
+    if (wrap) wrap.style.display = 'block';
+    // Strength score
+    let score = 0;
+    if (pass.length >= 6)  score++;
+    if (pass.length >= 10) score++;
+    if (/[A-Z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[^A-Za-z0-9]/.test(pass)) score++;
+    const levels = [
+      { cls: 'str-1', label: 'อ่อนมาก' },
+      { cls: 'str-2', label: 'อ่อน' },
+      { cls: 'str-3', label: 'พอใช้' },
+      { cls: 'str-4', label: 'แข็งแกร่ง' },
+      { cls: 'str-5', label: 'แข็งแกร่งมาก' },
+    ];
+    const lv = levels[Math.min(score, 4)];
+    if (bar) bar.className = `strength-bar ${lv.cls}`;
+    if (pass.length < 6) {
+      markInput('registerPassword', false);
+      setFieldHint('pass', `❌ ต้องมีอย่างน้อย 6 ตัวอักษร (ยังขาดอีก ${6 - pass.length})`, false);
+    } else {
+      markInput('registerPassword', true);
+      setFieldHint('pass', `✅ ความแข็งแกร่ง: ${lv.label}`, score >= 2 ? true : null);
+    }
+  }
+
+  if (field === 'pass2') {
+    if (!pass2) return (markInput('registerPassword2', null), setFieldHint('pass2', '', null));
+    if (pass2 !== pass) {
+      markInput('registerPassword2', false);
+      return setFieldHint('pass2', '❌ รหัสผ่านไม่ตรงกัน', false);
+    }
+    markInput('registerPassword2', true);
+    setFieldHint('pass2', '✅ รหัสผ่านตรงกัน', true);
+  }
+}
+
+function filterPhoneInput(input) {
+  // กรองให้เหลือแต่ตัวเลข และไม่เกิน 10 ตัว
+  input.value = input.value.replace(/\D/g, '').slice(0, 10);
+}
+
+function togglePassVis(inputId, btn) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+  btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+
+function validateAllRegFields() {
+  ['name','phone','email','pass','pass2'].forEach(validateRegField);
+  // คืนค่า true ถ้าผ่านหมด
+  const name  = document.getElementById('registerName')?.value.trim()  || '';
+  const phone = document.getElementById('registerPhone')?.value.trim() || '';
+  const email = document.getElementById('registerEmail')?.value.trim() || '';
+  const pass  = document.getElementById('registerPassword')?.value     || '';
+  const pass2 = document.getElementById('registerPassword2')?.value    || '';
+
+  if (name.length < 2) return { ok: false, msg: 'กรุณากรอกชื่อ-นามสกุล' };
+  if (!/^0\d{9}$/.test(phone)) return { ok: false, msg: 'เบอร์โทรต้องเป็น 0 ตามด้วยตัวเลข 9 หลัก' };
+  if (email) {
+    const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const domain  = email.split('@')[1]?.toLowerCase();
+    if (!emailRx.test(email) || !ALLOWED_EMAIL_DOMAINS.includes(domain))
+      return { ok: false, msg: 'รูปแบบอีเมลไม่ถูกต้อง หรือโดเมนไม่รองรับ' };
+  }
+  if (pass.length < 6) return { ok: false, msg: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' };
+  if (pass !== pass2)  return { ok: false, msg: 'รหัสผ่านไม่ตรงกัน' };
+  return { ok: true };
+}
+
+// ─── Phone Register — Step 1: ส่ง OTP ────────────────────────────────────────
+let _otpTimerInterval = null;
+let _resendInterval   = null;
+
+async function sendPhoneOtp(e) {
   e.preventDefault();
   const errEl = document.getElementById('registerError');
-  const btn = document.getElementById('registerSubmitBtn');
+  const btn   = document.getElementById('sendOtpBtn');
   errEl.style.display = 'none';
-  const pass = document.getElementById('registerPassword').value;
-  const pass2 = document.getElementById('registerPassword2').value;
-  if (pass !== pass2) { errEl.textContent = 'รหัสผ่านไม่ตรงกัน'; errEl.style.display = 'block'; return; }
-  btn.disabled = true; btn.textContent = 'กำลังสมัครสมาชิก...';
+
+  const check = validateAllRegFields();
+  if (!check.ok) { errEl.textContent = check.msg; errEl.style.display = 'block'; return; }
+
+  const phone = document.getElementById('registerPhone').value.trim();
+  btn.disabled = true; btn.textContent = 'กำลังส่ง OTP...';
+  try {
+    const res  = await fetch('/api/user/otp/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    // ไปขั้น 2
+    document.getElementById('regStep1').style.display = 'none';
+    document.getElementById('regStep2').style.display = 'block';
+    document.getElementById('otpPhoneDisplay').textContent = phone;
+    document.getElementById('otpInput').value = '';
+    document.getElementById('otpInput').focus();
+
+    // Dev mode: แสดง OTP บนหน้าจอ
+    if (data._dev_otp) {
+      document.getElementById('otpDemoCode').textContent = data._dev_otp;
+      document.getElementById('otpDemoHint').style.display = 'block';
+    } else {
+      document.getElementById('otpDemoHint').style.display = 'none';
+    }
+
+    startOtpCountdown();
+    startResendCountdown();
+  } catch (err) {
+    errEl.textContent = err.message; errEl.style.display = 'block';
+  } finally { btn.disabled = false; btn.textContent = '📱 ส่ง OTP ยืนยันเบอร์'; }
+}
+
+function startOtpCountdown() {
+  clearInterval(_otpTimerInterval);
+  let secs = 5 * 60;
+  const el = document.getElementById('otpCountdown');
+  _otpTimerInterval = setInterval(() => {
+    secs--;
+    const m = Math.floor(secs / 60), s = secs % 60;
+    if (el) el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+    if (secs <= 0) {
+      clearInterval(_otpTimerInterval);
+      const timerEl = document.getElementById('otpTimer');
+      if (timerEl) timerEl.innerHTML = '⚠️ OTP หมดอายุแล้ว กรุณาขอใหม่';
+    }
+  }, 1000);
+}
+
+function startResendCountdown(wait = 60) {
+  clearInterval(_resendInterval);
+  const btn = document.getElementById('resendOtpBtn');
+  const span = document.getElementById('resendCountdown');
+  let secs = wait;
+  btn.disabled = true;
+  _resendInterval = setInterval(() => {
+    secs--;
+    if (span) span.textContent = secs;
+    if (secs <= 0) {
+      clearInterval(_resendInterval);
+      btn.disabled = false;
+      btn.textContent = 'ส่งรหัสใหม่';
+    }
+  }, 1000);
+}
+
+async function resendOtp() {
+  const errEl = document.getElementById('registerError');
+  errEl.style.display = 'none';
+  const phone = document.getElementById('registerPhone').value.trim();
+  try {
+    const res  = await fetch('/api/user/otp/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    if (data._dev_otp) { document.getElementById('otpDemoCode').textContent = data._dev_otp; }
+    startOtpCountdown();
+    startResendCountdown();
+    showToast('📩 ส่ง OTP ใหม่แล้ว');
+  } catch (err) {
+    errEl.textContent = err.message; errEl.style.display = 'block';
+  }
+}
+
+function backToRegStep1() {
+  clearInterval(_otpTimerInterval);
+  clearInterval(_resendInterval);
+  document.getElementById('regStep1').style.display = 'block';
+  document.getElementById('regStep2').style.display = 'none';
+  document.getElementById('registerError').style.display = 'none';
+}
+
+// ─── Phone Register — Step 2: ยืนยัน OTP และสมัคร ───────────────────────────
+async function doPhoneRegister() {
+  const errEl = document.getElementById('registerError');
+  const btn   = document.getElementById('registerSubmitBtn');
+  errEl.style.display = 'none';
+
+  const otp = document.getElementById('otpInput').value.trim();
+  if (!/^\d{6}$/.test(otp)) {
+    errEl.textContent = 'กรุณากรอกรหัส OTP 6 หลัก'; errEl.style.display = 'block'; return;
+  }
+
+  btn.disabled = true; btn.textContent = 'กำลังยืนยัน...';
   try {
     const res = await fetch('/api/user/register', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: document.getElementById('registerName').value,
-        phone: document.getElementById('registerPhone').value,
-        email: document.getElementById('registerEmail').value,
-        password: pass
+        name:     document.getElementById('registerName').value,
+        phone:    document.getElementById('registerPhone').value.trim(),
+        email:    document.getElementById('registerEmail').value,
+        password: document.getElementById('registerPassword').value,
+        otp
       })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
+    clearInterval(_otpTimerInterval);
+    clearInterval(_resendInterval);
     setToken(data.token);
     await checkUserAuth();
     closeAuthModal();
     showToast(`🎉 สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ${data.name}!`);
   } catch (err) {
     errEl.textContent = err.message; errEl.style.display = 'block';
-  } finally { btn.disabled = false; btn.textContent = 'สมัครสมาชิก'; }
+  } finally { btn.disabled = false; btn.textContent = '✅ ยืนยันและสมัครสมาชิก'; }
 }
 
 // ─── Google Sign-In ───────────────────────────────────────────────────────────
@@ -254,7 +518,7 @@ function showProfileSection(sec) {
 
   if (sec === 'orders') renderOrderHistory();
   if (sec === 'wishlist') renderWishlist();
-  if (sec === 'payment') renderPaymentHistory();
+  if (sec === 'payment') { renderSavedCards(); renderPaymentHistory(); }
 }
 
 async function renderProfile() {
@@ -426,6 +690,185 @@ async function toggleWishlist(productId, forceRemove = false) {
     btn.title = nowIn ? 'เอาออกจากสินค้าที่ถูกใจ' : 'เพิ่มในสินค้าที่ถูกใจ';
   });
   showToast(remove ? '💔 นำออกจากสินค้าที่ถูกใจแล้ว' : '❤️ เพิ่มในสินค้าที่ถูกใจแล้ว');
+}
+
+// ─── Saved Cards ──────────────────────────────────────────────────────────────
+const BRAND_META = {
+  Visa:       { icon: 'VISA',  cls: 'visa' },
+  Mastercard: { icon: 'MC',    cls: 'mastercard' },
+  Amex:       { icon: 'AMEX',  cls: 'amex' },
+  JCB:        { icon: 'JCB',   cls: 'jcb' },
+  Discover:   { icon: 'DISC',  cls: 'discover' },
+  Other:      { icon: '💳',    cls: '' },
+};
+
+function detectBrand(numStr) {
+  const n = numStr.replace(/\s/g, '');
+  if (n.startsWith('4'))                    return 'Visa';
+  if (/^(5[1-5]|2[2-7])/.test(n))         return 'Mastercard';
+  if (/^3[47]/.test(n))                    return 'Amex';
+  if (/^(6011|65|64[4-9])/.test(n))        return 'Discover';
+  if (n.startsWith('35'))                   return 'JCB';
+  return 'Other';
+}
+
+async function renderSavedCards() {
+  const el = document.getElementById('savedCardsList');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state" style="padding:16px 0">กำลังโหลด...</div>';
+
+  try {
+    const token = localStorage.getItem('btUserToken');
+    const res  = await fetch('/api/user/cards', { headers: { Authorization: `Bearer ${token}` } });
+    const cards = await res.json();
+
+    if (!cards.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:16px 0">ยังไม่มีบัตรที่บันทึกไว้<br><small>กด "+ เพิ่มบัตร" เพื่อเพิ่มบัตรครั้งแรก</small></div>';
+      return;
+    }
+
+    el.innerHTML = cards.map(c => {
+      const meta = BRAND_META[c.card_brand] || BRAND_META.Other;
+      return `
+      <div class="saved-card-item ${c.is_default ? 'sc-default' : ''}" id="sc-item-${c.id}">
+        <div class="saved-card-chip ${meta.cls}">
+          <div class="sc-top">
+            <span class="sc-label-text">${c.label}</span>
+            <span class="sc-brand-badge">${meta.icon}</span>
+          </div>
+          <div class="sc-number">•••• •••• •••• ${c.last_four}</div>
+          <div class="sc-bottom">
+            <div><div class="sc-sub">ผู้ถือบัตร</div><div class="sc-val">${c.holder_name}</div></div>
+            <div style="text-align:right"><div class="sc-sub">หมดอายุ</div><div class="sc-val">${c.expiry}</div></div>
+          </div>
+          ${c.is_default ? '<div class="sc-default-badge">⭐ บัตรหลัก</div>' : ''}
+        </div>
+        <div class="sc-actions">
+          ${!c.is_default ? `<button class="btn btn-ghost btn-sm" onclick="setDefaultCard(${c.id})">ตั้งเป็นหลัก</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="deleteCard(${c.id}, '${c.last_four}')">🗑 ลบ</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch {
+    el.innerHTML = '<div class="empty-state" style="color:#c53030">โหลดข้อมูลไม่สำเร็จ</div>';
+  }
+}
+
+async function deleteCard(id, last4) {
+  if (!confirm(`ต้องการลบบัตรที่ลงท้ายด้วย ${last4}?`)) return;
+  const token = localStorage.getItem('btUserToken');
+  const res = await fetch(`/api/user/cards/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  if (res.ok) { showToast('🗑 ลบบัตรแล้ว'); renderSavedCards(); }
+  else { const d = await res.json(); showToast(`❌ ${d.error}`); }
+}
+
+async function setDefaultCard(id) {
+  const token = localStorage.getItem('btUserToken');
+  const res = await fetch(`/api/user/cards/${id}/default`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+  if (res.ok) { showToast('⭐ ตั้งเป็นบัตรหลักแล้ว'); renderSavedCards(); }
+  else { const d = await res.json(); showToast(`❌ ${d.error}`); }
+}
+
+function showAddCardForm(show) {
+  const formEl = document.getElementById('addCardForm');
+  if (!formEl) return;
+  formEl.style.display = show ? 'block' : 'none';
+  if (show) {
+    ['scCardNumber','scCardName','scCardExpiry','scCardCVV','scCardLabel'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const def = document.getElementById('scCardDefault');
+    if (def) def.checked = false;
+    updateSavedCardPreview();
+    document.getElementById('scCardNumber')?.focus();
+    formEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function formatSavedCardNumber(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 16);
+  input.value = v.replace(/(.{4})/g, '$1 ').trim();
+  updateSavedCardPreview();
+}
+
+function formatSavedCardExpiry(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 4);
+  if (v.length >= 2) v = v.slice(0, 2) + '/' + v.slice(2);
+  input.value = v;
+  updateSavedCardPreview();
+}
+
+function updateSavedCardPreview() {
+  const num  = document.getElementById('scCardNumber')?.value  || '';
+  const name = document.getElementById('scCardName')?.value    || '';
+  const exp  = document.getElementById('scCardExpiry')?.value  || '';
+  const brand = detectBrand(num);
+  const meta  = BRAND_META[brand] || BRAND_META.Other;
+
+  const numEl   = document.getElementById('savedPreviewNum');
+  const nameEl  = document.getElementById('savedPreviewName');
+  const expEl   = document.getElementById('savedPreviewExp');
+  const brandEl = document.getElementById('savedPreviewBrand');
+  const cardEl  = document.getElementById('savedCardPreview');
+
+  if (numEl)   numEl.textContent   = num  || '•••• •••• •••• ••••';
+  if (nameEl)  nameEl.textContent  = name || 'ชื่อบนบัตร';
+  if (expEl)   expEl.textContent   = exp  || 'MM/YY';
+  if (brandEl) brandEl.textContent = meta.icon;
+  if (cardEl)  cardEl.className    = `card-preview-mini${meta.cls ? ' ' + meta.cls : ''}`;
+}
+
+async function saveNewCard(e) {
+  e.preventDefault();
+  const btn = document.getElementById('saveCardBtn');
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+
+  try {
+    const numRaw = document.getElementById('scCardNumber').value.replace(/\s/g, '');
+    const expiry = document.getElementById('scCardExpiry').value.trim();
+    const holder = document.getElementById('scCardName').value.trim();
+    const label  = document.getElementById('scCardLabel').value.trim() || 'บัตรของฉัน';
+    const isDefault = document.getElementById('scCardDefault')?.checked || false;
+
+    if (numRaw.length < 13) throw new Error('หมายเลขบัตรไม่ถูกต้อง (ต้องมี 13–16 หลัก)');
+    if (!/^\d{2}\/\d{2}$/.test(expiry)) throw new Error('วันหมดอายุไม่ถูกต้อง (MM/YY)');
+
+    const last_four  = numRaw.slice(-4);
+    const card_brand = detectBrand(numRaw);
+    let   card_token = '';
+
+    // Omise tokenization (production)
+    if (window.appConfig?.hasOmise && window.Omise) {
+      const [month, year] = expiry.split('/');
+      card_token = await new Promise((resolve, reject) => {
+        Omise.setPublicKey(window.appConfig.omisePublicKey);
+        Omise.createToken('card', {
+          name: holder, number: numRaw,
+          expiration_month: parseInt(month),
+          expiration_year: parseInt('20' + year),
+          security_code: document.getElementById('scCardCVV').value,
+        }, (code, resp) => code === 200 ? resolve(resp.id) : reject(new Error(resp.message)));
+      });
+    }
+
+    const token = localStorage.getItem('btUserToken');
+    const res = await fetch('/api/user/cards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ last_four, card_brand, expiry, holder_name: holder, label, card_token, is_default: isDefault })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    showAddCardForm(false);
+    await renderSavedCards();
+    showToast(`💳 บันทึกบัตร ${card_brand} •••• ${last_four} สำเร็จ`);
+  } catch (err) {
+    showToast(`❌ ${err.message}`);
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 บันทึกบัตร';
+  }
 }
 
 // ─── Payment History ──────────────────────────────────────────────────────────

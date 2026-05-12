@@ -9,6 +9,12 @@ const db = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'buathong-rice-secret-2024';
+
+// ─── OTP Store (in-memory, resets on restart) ────────────────────────────────
+// phone → { otp, expiresAt, sentAt, attempts }
+const otpStore = new Map();
+// ลบ OTP ที่หมดอายุทุก 10 นาที
+setInterval(() => { const now = Date.now(); otpStore.forEach((v, k) => { if (now > v.expiresAt) otpStore.delete(k); }); }, 10 * 60_000);
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || '';
 const PROMPTPAY_ID = process.env.PROMPTPAY_ID || '0812345678';
@@ -77,16 +83,63 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/auth/verify', requireAdmin, (req, res) => res.json({ valid: true, name: req.admin.name }));
 
 // ─── User Auth ────────────────────────────────────────────────────────────────
+
+// ส่ง OTP ยืนยันเบอร์ก่อนสมัคร
+app.post('/api/user/otp/send', (req, res) => {
+  const { phone } = req.body;
+  if (!phone || !/^0[0-9]{9}$/.test(phone))
+    return res.status(400).json({ error: 'เบอร์โทรไม่ถูกต้อง (0XXXXXXXXX)' });
+  if (db.getOne('SELECT id FROM users WHERE phone = ?', [phone]))
+    return res.status(409).json({ error: 'เบอร์โทรนี้ถูกใช้งานแล้ว' });
+
+  // Rate limit: ห้ามส่งซ้ำภายใน 60 วินาที
+  const existing = otpStore.get(phone);
+  if (existing && Date.now() - existing.sentAt < 60_000) {
+    const wait = Math.ceil((60_000 - (Date.now() - existing.sentAt)) / 1000);
+    return res.status(429).json({ error: `กรุณารอ ${wait} วินาทีก่อนส่งใหม่` });
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore.set(phone, { otp, expiresAt: Date.now() + 5 * 60_000, sentAt: Date.now(), attempts: 0 });
+
+  // TODO: เชื่อม SMS provider จริง เช่น Twilio, True Move, AIS เป็นต้น
+  // ตัวอย่าง Twilio:
+  //   await twilioClient.messages.create({ to: '+66'+phone.slice(1), from: process.env.TWILIO_FROM, body: `รหัส OTP บัวทองไรซ์: ${otp} (หมดอายุใน 5 นาที)` });
+  console.log(`[OTP] 📱 ${phone} → ${otp}`);
+
+  const isDev = process.env.NODE_ENV !== 'production';
+  res.json({ ok: true, ...(isDev && { _dev_otp: otp }) });
+});
+
 app.post('/api/user/register', (req, res) => {
-  const { name, phone, email, password } = req.body;
-  if (!name || !phone || !password) return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
+  const { name, phone, email, password, otp } = req.body;
+  if (!name || !phone || !password || !otp) return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบ' });
   if (!/^0[0-9]{9}$/.test(phone)) return res.status(400).json({ error: 'เบอร์โทรไม่ถูกต้อง (0XXXXXXXXX)' });
   if (password.length < 6) return res.status(400).json({ error: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' });
+
+  // ตรวจสอบ OTP
+  const record = otpStore.get(phone);
+  if (!record) return res.status(400).json({ error: 'ยังไม่ได้ขอรหัส OTP หรือรหัสหมดอายุแล้ว' });
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(phone);
+    return res.status(400).json({ error: 'รหัส OTP หมดอายุแล้ว กรุณาขอรหัสใหม่' });
+  }
+  record.attempts = (record.attempts || 0) + 1;
+  if (record.attempts > 5) {
+    otpStore.delete(phone);
+    return res.status(400).json({ error: 'ใส่รหัสผิดเกินจำนวนครั้งที่กำหนด กรุณาขอ OTP ใหม่' });
+  }
+  if (record.otp !== otp.trim())
+    return res.status(400).json({ error: `รหัส OTP ไม่ถูกต้อง (เหลือ ${5 - record.attempts} ครั้ง)` });
+
+  otpStore.delete(phone); // ใช้ได้ครั้งเดียว
+
   if (db.getOne('SELECT id FROM users WHERE phone = ?', [phone]))
     return res.status(409).json({ error: 'เบอร์โทรนี้ถูกใช้งานแล้ว' });
   db.run('INSERT INTO users (name,phone,email,password) VALUES (?,?,?,?)',
     [name, phone, email || null, bcrypt.hashSync(password, 10)]);
-  const user = db.getOne('SELECT * FROM users WHERE id = ?', [db.lastId()]);
+  const user = db.getOne('SELECT * FROM users WHERE phone = ?', [phone]); // หลีกเลี่ยง lastId()
+  if (!user) return res.status(500).json({ error: 'สร้างบัญชีไม่สำเร็จ กรุณาลองใหม่' });
   res.status(201).json({ token: userToken(user), name: user.name, id: user.id });
 });
 
@@ -231,6 +284,56 @@ app.delete('/api/user/addresses/:id', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Saved Cards ─────────────────────────────────────────────────────────────
+app.get('/api/user/cards', requireUser, (req, res) => {
+  res.json(db.getAll(
+    'SELECT * FROM user_saved_cards WHERE user_id=? ORDER BY is_default DESC, created_at DESC',
+    [req.user.id]
+  ));
+});
+
+app.post('/api/user/cards', requireUser, (req, res) => {
+  const { last_four, card_brand, expiry, holder_name, label, card_token, is_default } = req.body;
+  if (!last_four || !card_brand || !expiry || !holder_name)
+    return res.status(400).json({ error: 'ข้อมูลบัตรไม่ครบ' });
+  if (!/^\d{4}$/.test(last_four))
+    return res.status(400).json({ error: 'เลขท้ายบัตรไม่ถูกต้อง' });
+
+  const count = db.getOne('SELECT COUNT(*) as c FROM user_saved_cards WHERE user_id=?', [req.user.id])?.c || 0;
+  const setDefault = (is_default || count === 0) ? 1 : 0;
+  if (setDefault) db.run('UPDATE user_saved_cards SET is_default=0 WHERE user_id=?', [req.user.id]);
+
+  db.run(
+    'INSERT INTO user_saved_cards (user_id,last_four,card_brand,expiry,holder_name,label,card_token,is_default) VALUES (?,?,?,?,?,?,?,?)',
+    [req.user.id, last_four, card_brand, expiry, holder_name, label || 'บัตรของฉัน', card_token || '', setDefault]
+  );
+  const card = db.getOne(
+    'SELECT * FROM user_saved_cards WHERE user_id=? AND last_four=? ORDER BY id DESC',
+    [req.user.id, last_four]
+  );
+  res.status(201).json(card);
+});
+
+app.delete('/api/user/cards/:id', requireUser, (req, res) => {
+  const card = db.getOne('SELECT * FROM user_saved_cards WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
+  if (!card) return res.status(404).json({ error: 'ไม่พบบัตร' });
+  db.run('DELETE FROM user_saved_cards WHERE id=?', [req.params.id]);
+  // ถ้าลบบัตร default ให้ตั้งบัตรล่าสุดเป็น default แทน
+  if (card.is_default) {
+    const next = db.getOne('SELECT id FROM user_saved_cards WHERE user_id=? ORDER BY created_at DESC', [req.user.id]);
+    if (next) db.run('UPDATE user_saved_cards SET is_default=1 WHERE id=?', [next.id]);
+  }
+  res.json({ ok: true });
+});
+
+app.patch('/api/user/cards/:id/default', requireUser, (req, res) => {
+  const card = db.getOne('SELECT id FROM user_saved_cards WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
+  if (!card) return res.status(404).json({ error: 'ไม่พบบัตร' });
+  db.run('UPDATE user_saved_cards SET is_default=0 WHERE user_id=?', [req.user.id]);
+  db.run('UPDATE user_saved_cards SET is_default=1 WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
 // ─── Products (public) ────────────────────────────────────────────────────────
 app.get('/api/products', (req, res) => {
   const { category, search } = req.query;
@@ -292,13 +395,15 @@ app.post('/api/orders', optionalUser, (req, res) => {
   const userId = req.user?.id || null;
   db.run('INSERT INTO orders (order_number,user_id,customer_name,customer_phone,customer_address,total_amount,note,payment_method) VALUES (?,?,?,?,?,?,?,?)',
     [orderNum, userId, customer_name, customer_phone, customer_address, total, note || '', payment_method || 'pending']);
-  const orderId = db.lastId();
+  const newOrder = db.getOne('SELECT * FROM orders WHERE order_number=?', [orderNum]);
+  if (!newOrder) return res.status(500).json({ error: 'บันทึกออเดอร์ไม่สำเร็จ' });
+  const orderId = newOrder.id;
   for (const item of enriched) {
     db.run('INSERT INTO order_items (order_id,product_id,product_name,quantity,unit,price) VALUES (?,?,?,?,?,?)',
       [orderId, item.product_id, item.product.name, item.quantity, item.product.unit, item.product.price]);
     db.run('UPDATE products SET stock=stock-? WHERE id=?', [item.quantity, item.product_id]);
   }
-  res.status(201).json({ ...db.getOne('SELECT * FROM orders WHERE id=?', [orderId]) });
+  res.status(201).json({ ...newOrder });
 });
 
 app.put('/api/orders/:id/payment', optionalUser, (req, res) => {

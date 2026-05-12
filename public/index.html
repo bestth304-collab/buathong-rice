@@ -212,14 +212,89 @@
         <!-- Register Panel -->
         <div id="registerPanel" style="display:none">
           <div id="registerError" class="auth-error" style="display:none"></div>
-          <form id="registerForm" onsubmit="doPhoneRegister(event)">
-            <div class="form-group"><label>ชื่อ-นามสกุล *</label><input type="text" id="registerName" placeholder="ชื่อ-นามสกุล" required></div>
-            <div class="form-group"><label>เบอร์โทรศัพท์ *</label><input type="tel" id="registerPhone" placeholder="0812345678" required></div>
-            <div class="form-group"><label>อีเมล (ไม่บังคับ)</label><input type="email" id="registerEmail" placeholder="email@example.com"></div>
-            <div class="form-group"><label>รหัสผ่าน *</label><input type="password" id="registerPassword" placeholder="อย่างน้อย 6 ตัวอักษร" required></div>
-            <div class="form-group"><label>ยืนยันรหัสผ่าน *</label><input type="password" id="registerPassword2" placeholder="พิมพ์รหัสผ่านอีกครั้ง" required></div>
-            <button type="submit" class="btn btn-primary btn-full" id="registerSubmitBtn">สมัครสมาชิก</button>
-          </form>
+
+          <!-- ขั้นที่ 1: กรอกข้อมูล -->
+          <div id="regStep1">
+            <form id="registerForm" onsubmit="sendPhoneOtp(event)" novalidate>
+
+              <!-- ชื่อ -->
+              <div class="form-group">
+                <label>ชื่อ-นามสกุล *</label>
+                <input type="text" id="registerName" placeholder="ชื่อ นามสกุล"
+                       autocomplete="name" oninput="validateRegField('name')" required>
+                <span class="field-hint" id="hint-name"></span>
+              </div>
+
+              <!-- เบอร์โทร -->
+              <div class="form-group">
+                <label>เบอร์โทรศัพท์ *</label>
+                <input type="tel" id="registerPhone" placeholder="0812345678"
+                       maxlength="10" inputmode="numeric" autocomplete="tel"
+                       oninput="filterPhoneInput(this); validateRegField('phone')" required>
+                <span class="field-hint" id="hint-phone"></span>
+              </div>
+
+              <!-- อีเมล -->
+              <div class="form-group">
+                <label>อีเมล <span style="font-weight:400;color:var(--text-light)">(ไม่บังคับ)</span></label>
+                <input type="text" id="registerEmail" placeholder="example@gmail.com"
+                       autocomplete="email" oninput="validateRegField('email')">
+                <span class="field-hint" id="hint-email"></span>
+              </div>
+
+              <!-- รหัสผ่าน -->
+              <div class="form-group">
+                <label>รหัสผ่าน *</label>
+                <div class="input-eye-wrap">
+                  <input type="password" id="registerPassword" placeholder="อย่างน้อย 6 ตัวอักษร"
+                         autocomplete="new-password" oninput="validateRegField('pass'); validateRegField('pass2')" required>
+                  <button type="button" class="eye-btn" onclick="togglePassVis('registerPassword', this)">👁</button>
+                </div>
+                <div class="strength-bar-wrap" id="strengthWrap" style="display:none">
+                  <div class="strength-bar" id="strengthBar"></div>
+                </div>
+                <span class="field-hint" id="hint-pass"></span>
+              </div>
+
+              <!-- ยืนยันรหัสผ่าน -->
+              <div class="form-group">
+                <label>ยืนยันรหัสผ่าน *</label>
+                <div class="input-eye-wrap">
+                  <input type="password" id="registerPassword2" placeholder="พิมพ์รหัสผ่านอีกครั้ง"
+                         autocomplete="new-password" oninput="validateRegField('pass2')" required>
+                  <button type="button" class="eye-btn" onclick="togglePassVis('registerPassword2', this)">👁</button>
+                </div>
+                <span class="field-hint" id="hint-pass2"></span>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-full" id="sendOtpBtn">📱 ส่ง OTP ยืนยันเบอร์</button>
+            </form>
+          </div>
+
+          <!-- ขั้นที่ 2: ยืนยัน OTP -->
+          <div id="regStep2" style="display:none">
+            <div class="otp-info-box">
+              <div class="otp-phone-display">📱 ส่ง OTP ไปยัง <strong id="otpPhoneDisplay"></strong></div>
+              <div id="otpDemoHint" class="otp-demo-hint" style="display:none">
+                🧪 โหมดทดสอบ — รหัส OTP ของคุณคือ <strong id="otpDemoCode"></strong>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:16px">
+              <label>รหัส OTP 6 หลัก *</label>
+              <input type="text" id="otpInput" class="otp-input" placeholder="000000"
+                     maxlength="6" inputmode="numeric" pattern="[0-9]{6}"
+                     autocomplete="one-time-code">
+            </div>
+            <div class="otp-meta">
+              <span class="otp-timer" id="otpTimer">⏱ หมดอายุใน <span id="otpCountdown">5:00</span></span>
+              <button type="button" class="link-btn" id="resendOtpBtn" onclick="resendOtp()" disabled>
+                ส่งใหม่ (<span id="resendCountdown">60</span>s)
+              </button>
+            </div>
+            <button type="button" class="btn btn-primary btn-full" id="registerSubmitBtn" onclick="doPhoneRegister()">✅ ยืนยันและสมัครสมาชิก</button>
+            <button type="button" class="btn btn-ghost btn-full" style="margin-top:8px" onclick="backToRegStep1()">← แก้ไขข้อมูล</button>
+          </div>
+
           <p class="auth-switch">มีบัญชีแล้ว? <button onclick="switchAuthTab('login')" class="link-btn">เข้าสู่ระบบ</button></p>
         </div>
       </div>
@@ -368,7 +443,9 @@
           <!-- ── ช่องทางชำระเงิน ── -->
           <div id="psec-payment" class="profile-section" style="display:none">
             <div class="profile-section-header"><h2>ช่องทางชำระเงิน</h2></div>
-            <div class="profile-info-card">
+
+            <!-- ช่องทางที่รองรับ -->
+            <div class="profile-info-card" style="margin-bottom:24px">
               <div class="payment-method-row">
                 <div class="pm-icon">📱</div>
                 <div class="pm-info"><div class="pm-name">พร้อมเพย์ / QR Code</div><div class="pm-desc">สแกนจ่ายผ่านแอปธนาคาร</div></div>
@@ -376,12 +453,74 @@
               </div>
               <div class="payment-method-row">
                 <div class="pm-icon">💳</div>
-                <div class="pm-info"><div class="pm-name">บัตรเครดิต / เดบิต</div><div class="pm-desc">Visa, Mastercard, JCB</div></div>
+                <div class="pm-info"><div class="pm-name">บัตรเครดิต / เดบิต</div><div class="pm-desc">Visa, Mastercard, Amex, JCB</div></div>
                 <span class="badge badge-success">พร้อมใช้</span>
               </div>
-              <p style="margin-top:20px;font-size:13px;color:var(--text-light)">💡 เลือกช่องทางชำระเงินได้ในขั้นตอนสั่งซื้อ ไม่ต้องบันทึกข้อมูลบัตรล่วงหน้า</p>
             </div>
-            <div class="profile-section-header" style="margin-top:28px"><h3>ประวัติการชำระเงิน</h3></div>
+
+            <!-- บัตรที่บันทึกไว้ -->
+            <div class="profile-section-header">
+              <h3>บัตรที่บันทึกไว้</h3>
+              <button class="btn btn-primary btn-sm" onclick="showAddCardForm(true)">+ เพิ่มบัตร</button>
+            </div>
+            <div id="savedCardsList" style="margin-bottom:8px"></div>
+
+            <!-- ฟอร์มเพิ่มบัตรใหม่ -->
+            <div id="addCardForm" style="display:none;margin-bottom:28px">
+              <div class="profile-info-card">
+                <h4 style="margin:0 0 16px;font-size:16px">💳 เพิ่มบัตรใหม่</h4>
+                <!-- Card Preview Mini -->
+                <div class="card-preview-mini" id="savedCardPreview">
+                  <div class="cpm-brand" id="savedPreviewBrand">💳</div>
+                  <div class="cpm-num" id="savedPreviewNum">•••• •••• •••• ••••</div>
+                  <div class="cpm-row">
+                    <div><div class="cpm-label">ชื่อผู้ถือบัตร</div><div class="cpm-val" id="savedPreviewName">ชื่อบนบัตร</div></div>
+                    <div style="text-align:right"><div class="cpm-label">หมดอายุ</div><div class="cpm-val" id="savedPreviewExp">MM/YY</div></div>
+                  </div>
+                </div>
+                <form onsubmit="saveNewCard(event)">
+                  <div class="form-group">
+                    <label>หมายเลขบัตร *</label>
+                    <input type="text" id="scCardNumber" placeholder="0000 0000 0000 0000"
+                           maxlength="19" inputmode="numeric" autocomplete="cc-number"
+                           oninput="formatSavedCardNumber(this)" required>
+                  </div>
+                  <div class="form-group">
+                    <label>ชื่อผู้ถือบัตร (ตามหน้าบัตร) *</label>
+                    <input type="text" id="scCardName" placeholder="FIRSTNAME LASTNAME"
+                           autocomplete="cc-name" oninput="updateSavedCardPreview()" required>
+                  </div>
+                  <div class="form-row-2">
+                    <div class="form-group">
+                      <label>วันหมดอายุ *</label>
+                      <input type="text" id="scCardExpiry" placeholder="MM/YY" maxlength="5"
+                             inputmode="numeric" autocomplete="cc-exp"
+                             oninput="formatSavedCardExpiry(this)" required>
+                    </div>
+                    <div class="form-group">
+                      <label>CVV *</label>
+                      <input type="password" id="scCardCVV" placeholder="•••" maxlength="4"
+                             inputmode="numeric" autocomplete="cc-csc" required>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>ชื่อเรียกบัตรนี้</label>
+                    <input type="text" id="scCardLabel" placeholder="เช่น บัตรหลัก, บัตรสำรอง">
+                  </div>
+                  <label class="check-label" style="margin-bottom:16px">
+                    <input type="checkbox" id="scCardDefault"> ตั้งเป็นบัตรเริ่มต้น
+                  </label>
+                  <p class="form-hint">🔒 ข้อมูลบัตรถูกเข้ารหัสอย่างปลอดภัย เราไม่บันทึกหมายเลขบัตรเต็ม</p>
+                  <div style="display:flex;gap:10px;margin-top:12px">
+                    <button type="button" onclick="showAddCardForm(false)" class="btn btn-ghost btn-sm">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="saveCardBtn">💾 บันทึกบัตร</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- ประวัติการชำระเงิน -->
+            <div class="profile-section-header" style="margin-top:4px"><h3>ประวัติการชำระเงิน</h3></div>
             <div id="paymentHistoryList"></div>
           </div>
 
