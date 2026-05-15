@@ -1,10 +1,28 @@
-const express = require('express');
-const cors    = require('cors');
-const bcrypt  = require('bcryptjs');
-const jwt     = require('jsonwebtoken');
-const path    = require('path');
-const https   = require('https');
-const helmet  = require('helmet');
+const express    = require('express');
+const cors       = require('cors');
+const bcrypt     = require('bcryptjs');
+const jwt        = require('jsonwebtoken');
+const path       = require('path');
+const https      = require('https');
+const helmet     = require('helmet');
+const multer     = require('multer');
+const { Readable } = require('stream');
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('อนุญาตเฉพาะไฟล์รูปภาพเท่านั้น'));
+  },
+});
 
 const db   = require('./database');
 const app  = express();
@@ -597,6 +615,26 @@ app.patch('/api/user/cards/:id/default', requireUser, async (req, res) => {
     await db.run('UPDATE user_saved_cards SET is_default=1 WHERE id=?', [id]);
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'เกิดข้อผิดพลาด' }); }
+});
+
+// ─── Image Upload (admin) ─────────────────────────────────────────────────────
+app.post('/api/admin/upload', requireAdmin, upload.single('image'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'ไม่พบไฟล์รูปภาพ' });
+  if (!process.env.CLOUDINARY_CLOUD_NAME)
+    return res.status(500).json({ error: 'ยังไม่ได้ตั้งค่า Cloudinary กรุณาตั้งค่า env vars ก่อน' });
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'buathong-rice', resource_type: 'image', quality: 'auto', fetch_format: 'auto' },
+        (err, result) => { if (err) reject(err); else resolve(result); }
+      );
+      Readable.from(req.file.buffer).pipe(stream);
+    });
+    res.json({ url: result.secure_url });
+  } catch (err) {
+    console.error('[Upload]', err.message);
+    res.status(500).json({ error: 'อัปโหลดรูปไม่สำเร็จ' });
+  }
 });
 
 // ─── Products (public) ────────────────────────────────────────────────────────

@@ -281,6 +281,44 @@ function previewImage() {
   else img.style.display = 'none';
 }
 
+async function uploadProductImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('uploadStatus');
+  const box      = document.querySelector('.img-upload-box');
+
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '⏳ กำลังอัปโหลด...';
+  statusEl.style.color = '#666';
+  box.classList.add('uploading');
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const res = await fetch('/api/admin/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }, // ไม่ใส่ Content-Type ให้ browser จัดการ boundary เอง
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'อัปโหลดไม่สำเร็จ');
+
+    document.getElementById('pImage').value = data.url;
+    statusEl.innerHTML = '✅ อัปโหลดสำเร็จ';
+    statusEl.style.color = 'var(--green)';
+    previewImage();
+  } catch (err) {
+    statusEl.innerHTML = `❌ ${err.message}`;
+    statusEl.style.color = '#e53e3e';
+  } finally {
+    box.classList.remove('uploading');
+    // reset input เพื่อให้เลือกไฟล์เดิมซ้ำได้
+    e.target.value = '';
+  }
+}
+
 async function saveProduct(e) {
   e.preventDefault();
   const id = document.getElementById('productId').value;

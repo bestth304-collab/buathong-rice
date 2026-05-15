@@ -273,9 +273,17 @@
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>URL รูปภาพ</label>
+              <label>รูปภาพสินค้า</label>
+              <div class="img-upload-box" onclick="document.getElementById('pImageFile').click()">
+                <input type="file" id="pImageFile" accept="image/*" style="display:none" onchange="uploadProductImage(event)">
+                <span class="img-upload-icon">📁</span>
+                <span class="img-upload-text">คลิกเพื่ออัปโหลดรูปจากเครื่อง</span>
+                <span class="img-upload-hint">PNG, JPG, WEBP ขนาดไม่เกิน 5 MB</span>
+              </div>
+              <div id="uploadStatus" style="display:none;margin-top:8px;font-size:13px;"></div>
+              <div class="img-url-divider"><span>หรือวาง URL รูปภาพ</span></div>
               <input type="url" id="pImage" placeholder="https://..." oninput="previewImage()">
-              <img id="imagePreview" src="" alt="preview" style="display:none;margin-top:10px;border-radius:8px;max-height:140px;object-fit:cover;">
+              <img id="imagePreview" src="" alt="preview" style="display:none;margin-top:10px;border-radius:8px;max-height:140px;object-fit:cover;width:100%;">
             </div>
             <div class="form-group">
               <label>แท็กสินค้า (สติกเกอร์)</label>
