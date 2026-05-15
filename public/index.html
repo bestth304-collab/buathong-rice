@@ -22,6 +22,7 @@
         <a href="#products">สินค้า</a>
         <a href="#about">เกี่ยวกับเรา</a>
         <a href="#contact">ติดต่อ</a>
+        <a href="#" onclick="openTrackModal();return false;">📦 ติดตามออเดอร์</a>
       </div>
       <div class="nav-right">
         <!-- Guest -->
@@ -662,6 +663,30 @@
         <h3>ชำระเงินสำเร็จ!</h3>
         <p>ขอบคุณที่ซื้อสินค้ากับบัวทองไรซ์<br>ชำระผ่าน <strong id="paySuccessMethod"></strong><br><br>ทีมงานจะดำเนินการจัดส่งให้เร็วที่สุด 📦</p>
         <button class="btn btn-primary" onclick="closePaySuccessModal()">กลับสู่หน้าร้าน</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Order Tracking Modal ═══ -->
+  <div class="modal-overlay" id="trackModal">
+    <div class="modal modal-track">
+      <div class="modal-header">
+        <h3>📦 ติดตามคำสั่งซื้อ</h3>
+        <button onclick="closeTrackModal()" class="cart-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="trackOrder(event)">
+          <div class="form-group">
+            <label>หมายเลขออเดอร์</label>
+            <input type="text" id="trackOrderNum" placeholder="เช่น BT-20240001" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>เบอร์โทรศัพท์ที่ใช้สั่ง</label>
+            <input type="tel" id="trackPhone" placeholder="0812345678" required autocomplete="off">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">ค้นหา</button>
+        </form>
+        <div id="trackResult"></div>
       </div>
     </div>
   </div>

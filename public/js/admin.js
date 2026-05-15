@@ -150,7 +150,26 @@ async function loadDashboard() {
   const badge = document.getElementById('pendingBadge');
   if (data.pendingOrders > 0) { badge.textContent = data.pendingOrders; badge.style.display = 'inline-block'; }
   else badge.style.display = 'none';
+  renderLowStockAlert(data.lowStock || []);
   renderRecentOrders();
+}
+
+function renderLowStockAlert(lowStock) {
+  const el = document.getElementById('lowStockAlert');
+  if (!el) return;
+  if (!lowStock.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="low-stock-header">⚠️ สินค้าใกล้หมด (${lowStock.length} รายการ)</div>
+    <div class="low-stock-list">
+      ${lowStock.map(p => `
+        <div class="low-stock-item">
+          <span>${p.name}</span>
+          <span class="badge ${p.stock === 0 ? 'badge-danger' : 'badge-warning'}">
+            ${p.stock === 0 ? 'หมดแล้ว' : `เหลือ ${p.stock} ${p.unit}`}
+          </span>
+        </div>`).join('')}
+    </div>`;
 }
 
 const PAY_LABELS = {
@@ -158,7 +177,11 @@ const PAY_LABELS = {
   card: '💳 บัตร',
   pending: '💵 ยังไม่ชำระ',
 };
-const PAY_STATUS = { paid: { label: 'ชำระแล้ว', cls: 'badge-success' }, pending: { label: 'รอชำระ', cls: 'badge-warning' } };
+const PAY_STATUS = {
+  paid:   { label: 'ชำระแล้ว',     cls: 'badge-success' },
+  pending: { label: 'รอชำระ',       cls: 'badge-warning' },
+  unpaid:  { label: 'ยังไม่ชำระ',  cls: 'badge-warning' },
+};
 
 function renderRecentOrders() {
   const el = document.getElementById('recentOrders');
@@ -369,7 +392,7 @@ async function confirmDelete() {
 async function loadOrders() {
   const res = await apiFetch('/api/admin/orders');
   allOrders = await res.json();
-  renderOrders(allOrders);
+  applyOrderFilters();
   renderRecentOrders();
 }
 
@@ -377,7 +400,19 @@ function filterOrders(status, btn) {
   currentOrderFilter = status;
   document.querySelectorAll('.order-filter').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  const filtered = status === 'all' ? allOrders : allOrders.filter(o => o.status === status);
+  applyOrderFilters();
+}
+
+function applyOrderFilters() {
+  const q = (document.getElementById('orderSearch')?.value || '').toLowerCase();
+  let filtered = currentOrderFilter === 'all' ? allOrders : allOrders.filter(o => o.status === currentOrderFilter);
+  if (q) {
+    filtered = filtered.filter(o =>
+      (o.order_number || '').toLowerCase().includes(q) ||
+      (o.customer_name || '').toLowerCase().includes(q) ||
+      (o.customer_phone || '').includes(q)
+    );
+  }
   renderOrders(filtered);
 }
 
@@ -477,6 +512,36 @@ function filterUserTable() {
     (u.phone || '').includes(q) ||
     (u.email || '').toLowerCase().includes(q)
   ));
+}
+
+// ─── Order Tracking (public modal helper — used by main site) ─────────────────
+async function trackOrder(e) {
+  e && e.preventDefault();
+  const orderNum = document.getElementById('trackOrderNum')?.value.trim();
+  const phone    = document.getElementById('trackPhone')?.value.trim();
+  const resultEl = document.getElementById('trackResult');
+  if (!orderNum || !phone || !resultEl) return;
+
+  resultEl.innerHTML = '<div style="text-align:center;padding:20px;color:#888">⏳ กำลังค้นหา...</div>';
+  try {
+    const res = await fetch(`/api/orders/track?order_number=${encodeURIComponent(orderNum)}&phone=${encodeURIComponent(phone)}`);
+    const data = await res.json();
+    if (!res.ok) { resultEl.innerHTML = `<div class="track-error">${data.error}</div>`; return; }
+    const st = STATUS_LABELS[data.status] || STATUS_LABELS.pending;
+    const ps = PAY_STATUS[data.payment_status] || PAY_STATUS.pending;
+    resultEl.innerHTML = `
+      <div class="track-card">
+        <div class="track-row"><span>หมายเลขออเดอร์</span><strong>${data.order_number}</strong></div>
+        <div class="track-row"><span>สถานะ</span><span class="badge ${st.cls}">${st.label}</span></div>
+        <div class="track-row"><span>การชำระเงิน</span><span class="badge ${ps.cls}">${ps.label}</span></div>
+        <div class="track-row"><span>ที่อยู่จัดส่ง</span><span>${data.customer_address}</span></div>
+        <div class="track-row"><span>วันที่สั่ง</span><span>${fmtDate(data.created_at)}</span></div>
+        <div class="track-items">
+          ${(data.items||[]).map(i=>`<div class="track-item-row"><span>${i.product_name} × ${i.quantity} ${i.unit}</span><span>฿${(i.price*i.quantity).toLocaleString()}</span></div>`).join('')}
+        </div>
+        <div class="track-total">ยอดรวม: <strong>฿${data.total_amount.toLocaleString()}</strong></div>
+      </div>`;
+  } catch { resultEl.innerHTML = '<div class="track-error">เกิดข้อผิดพลาด กรุณาลองใหม่</div>'; }
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────

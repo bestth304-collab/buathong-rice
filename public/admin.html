@@ -121,6 +121,9 @@
             </div>
           </div>
         </div>
+        <!-- Low Stock Alert -->
+        <div id="lowStockAlert" class="low-stock-alert mt-24" style="display:none"></div>
+
         <div class="card mt-24">
           <div class="card-header">
             <h3>คำสั่งซื้อล่าสุด</h3>
@@ -216,6 +219,7 @@
           <button class="order-filter" data-status="shipping" onclick="filterOrders('shipping', this)">กำลังจัดส่ง</button>
           <button class="order-filter" data-status="delivered" onclick="filterOrders('delivered', this)">ส่งสำเร็จ</button>
           <button class="order-filter" data-status="cancelled" onclick="filterOrders('cancelled', this)">ยกเลิก</button>
+          <input type="text" id="orderSearch" placeholder="🔍 ค้นหาออเดอร์, ชื่อ, เบอร์..." oninput="applyOrderFilters()" class="table-search" style="max-width:260px;margin-left:auto;">
         </div>
         <div id="ordersContainer">กำลังโหลด...</div>
       </div>

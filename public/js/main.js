@@ -295,9 +295,83 @@ function showToast(msg) {
   toastTimeout = setTimeout(() => t.classList.remove('show'), 2800);
 }
 
+// ─── Order Tracking ───────────────────────────────────────────────────────────
+const TRACK_STATUS = {
+  pending:   { label: 'รอดำเนินการ', cls: 'badge-warning' },
+  confirmed: { label: 'ยืนยันแล้ว',  cls: 'badge-info' },
+  shipping:  { label: 'กำลังจัดส่ง', cls: 'badge-info' },
+  delivered: { label: 'ส่งสำเร็จ',   cls: 'badge-success' },
+  cancelled: { label: 'ยกเลิก',      cls: 'badge-danger' },
+};
+const TRACK_PAY = {
+  paid:    { label: 'ชำระแล้ว', cls: 'badge-success' },
+  pending: { label: 'รอชำระ',   cls: 'badge-warning' },
+  unpaid:  { label: 'ยังไม่ชำระ', cls: 'badge-warning' },
+};
+
+function openTrackModal() {
+  document.getElementById('trackResult').innerHTML = '';
+  document.getElementById('trackOrderNum').value = '';
+  document.getElementById('trackPhone').value = '';
+  document.getElementById('trackModal').classList.add('open');
+}
+function closeTrackModal() { document.getElementById('trackModal').classList.remove('open'); }
+
+function fmtDateTrack(str) {
+  if (!str) return '-';
+  const d = new Date(str.replace(' ', 'T'));
+  if (isNaN(d)) return str;
+  return d.toLocaleString('th-TH', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+async function trackOrder(e) {
+  e && e.preventDefault();
+  const orderNum = document.getElementById('trackOrderNum').value.trim();
+  const phone    = document.getElementById('trackPhone').value.trim();
+  const resultEl = document.getElementById('trackResult');
+
+  resultEl.innerHTML = '<div style="text-align:center;padding:16px;color:#888">⏳ กำลังค้นหา...</div>';
+  try {
+    const res = await fetch(`/api/orders/track?order_number=${encodeURIComponent(orderNum)}&phone=${encodeURIComponent(phone)}`);
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<div style="background:#fff5f5;color:#c53030;border:1px solid #fed7d7;border-radius:8px;padding:12px 16px;font-size:14px;margin-top:12px;text-align:center">${data.error}</div>`;
+      return;
+    }
+    const st = TRACK_STATUS[data.status] || TRACK_STATUS.pending;
+    const ps = TRACK_PAY[data.payment_status] || TRACK_PAY.pending;
+    const STEP_MAP = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, cancelled: 0 };
+    const step = STEP_MAP[data.status] || 0;
+    const steps = ['รอดำเนินการ','ยืนยันแล้ว','กำลังจัดส่ง','ส่งสำเร็จ'];
+    const stepsHtml = data.status === 'cancelled'
+      ? `<div class="track-cancelled">❌ คำสั่งซื้อถูกยกเลิก</div>`
+      : `<div class="track-steps">${steps.map((s,i)=>`
+          <div class="track-step ${i < step ? 'done' : i === step-1 ? 'active' : ''}">
+            <div class="track-step-dot">${i < step ? '✓' : i+1}</div>
+            <div class="track-step-label">${s}</div>
+          </div>`).join('<div class="track-step-line"></div>')}</div>`;
+    resultEl.innerHTML = `
+      <div class="track-card">
+        ${stepsHtml}
+        <div class="track-row"><span>หมายเลขออเดอร์</span><strong>${data.order_number}</strong></div>
+        <div class="track-row"><span>สถานะ</span><span class="badge ${st.cls}">${st.label}</span></div>
+        <div class="track-row"><span>การชำระเงิน</span><span class="badge ${ps.cls}">${ps.label}</span></div>
+        <div class="track-row"><span>ที่อยู่จัดส่ง</span><span style="font-size:12px;text-align:right">${data.customer_address}</span></div>
+        <div class="track-row"><span>วันที่สั่ง</span><span>${fmtDateTrack(data.created_at)}</span></div>
+        <div class="track-items">
+          ${(data.items||[]).map(i=>`<div class="track-item-row"><span>${i.product_name} × ${i.quantity} ${i.unit}</span><span>฿${(i.price*i.quantity).toLocaleString()}</span></div>`).join('')}
+        </div>
+        <div class="track-total">ยอดรวม: <strong>฿${data.total_amount.toLocaleString()}</strong></div>
+      </div>`;
+  } catch { resultEl.innerHTML = '<div style="color:#c53030;text-align:center;margin-top:12px">เกิดข้อผิดพลาด กรุณาลองใหม่</div>'; }
+}
+
 // ─── Event Listeners ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('checkoutOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeCheckout();
+  });
+  document.getElementById('trackModal').addEventListener('click', function(e) {
+    if (e.target === this) closeTrackModal();
   });
 });

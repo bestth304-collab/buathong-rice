@@ -815,20 +815,43 @@ app.put('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
   try {
     const VALID = ['pending','confirmed','shipping','delivered','cancelled'];
     const status = sanitizeStr(req.body.status, 20);
+    const orderId = parseInt(req.params.id);
     if (!VALID.includes(status)) return res.status(400).json({ error: 'สถานะไม่ถูกต้อง' });
-    await db.run('UPDATE orders SET status=? WHERE id=?', [status, parseInt(req.params.id)]);
+
+    // Get current order status before updating
+    const order = await db.getOne('SELECT status FROM orders WHERE id=?', [orderId]);
+    if (!order) return res.status(404).json({ error: 'ไม่พบคำสั่งซื้อ' });
+
+    await db.run('UPDATE orders SET status=? WHERE id=?', [status, orderId]);
+
+    // Restore stock when cancelling a non-cancelled order
+    if (status === 'cancelled' && order.status !== 'cancelled') {
+      const items = await db.getAll('SELECT product_id, quantity FROM order_items WHERE order_id=?', [orderId]);
+      for (const item of items) {
+        await db.run('UPDATE products SET stock = stock + ? WHERE id=?', [item.quantity, item.product_id]);
+      }
+    }
+    // Re-deduct stock if un-cancelling (e.g. pending → cancelled then back to pending)
+    if (order.status === 'cancelled' && status !== 'cancelled') {
+      const items = await db.getAll('SELECT product_id, quantity FROM order_items WHERE order_id=?', [orderId]);
+      for (const item of items) {
+        await db.run('UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE id=?', [item.quantity, item.product_id]);
+      }
+    }
+
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'เกิดข้อผิดพลาด' }); }
 });
 
 app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
   try {
-    const [totalOrders, pendingOrders, revenue, totalProducts, totalUsers] = await Promise.all([
+    const [totalOrders, pendingOrders, revenue, totalProducts, totalUsers, lowStock] = await Promise.all([
       db.getOne('SELECT COUNT(*) as c FROM orders'),
       db.getOne("SELECT COUNT(*) as c FROM orders WHERE status='pending'"),
       db.getOne("SELECT COALESCE(SUM(total_amount),0) as t FROM orders WHERE status!='cancelled'"),
       db.getOne('SELECT COUNT(*) as c FROM products WHERE active=1'),
       db.getOne('SELECT COUNT(*) as c FROM users'),
+      db.getAll('SELECT id, name, stock, unit FROM products WHERE active=1 AND stock <= 10 ORDER BY stock ASC LIMIT 5'),
     ]);
     res.json({
       totalOrders:   parseInt(totalOrders.c),
@@ -836,7 +859,28 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
       totalRevenue:  parseFloat(revenue.t),
       totalProducts: parseInt(totalProducts.c),
       totalUsers:    parseInt(totalUsers.c),
+      lowStock,
     });
+  } catch { res.status(500).json({ error: 'เกิดข้อผิดพลาด' }); }
+});
+
+// ─── Order Tracking (public, no login) ───────────────────────────────────────
+app.get('/api/orders/track', async (req, res) => {
+  try {
+    const orderNumber = sanitizeStr(req.query.order_number || '', 30);
+    const phone       = sanitizeStr(req.query.phone        || '', 10);
+    if (!orderNumber || !phone) return res.status(400).json({ error: 'กรุณาระบุหมายเลขออเดอร์และเบอร์โทร' });
+
+    const order = await db.getOne(
+      'SELECT * FROM orders WHERE order_number=? AND customer_phone=?',
+      [orderNumber, phone]
+    );
+    if (!order) return res.status(404).json({ error: 'ไม่พบคำสั่งซื้อ กรุณาตรวจสอบหมายเลขออเดอร์และเบอร์โทรศัพท์' });
+
+    const items = await db.getAll('SELECT * FROM order_items WHERE order_id=?', [order.id]);
+    // Return order without sensitive user_id
+    const { user_id, ...safeOrder } = order;
+    res.json({ ...safeOrder, items });
   } catch { res.status(500).json({ error: 'เกิดข้อผิดพลาด' }); }
 });
 
