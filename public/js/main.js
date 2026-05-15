@@ -1,6 +1,7 @@
 // ─── State ────────────────────────────────────────────────────────────────────
 let products = [];
-let cart = JSON.parse(localStorage.getItem('btCart') || '[]');
+// Normalize cart IDs to numbers on load (prevents string/number mismatch)
+let cart = JSON.parse(localStorage.getItem('btCart') || '[]').map(c => ({ ...c, id: parseInt(c.id) }));
 let currentCategory = 'all';
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -97,12 +98,14 @@ function searchProducts() {
 }
 
 function changeQty(id, delta) {
+  id = parseInt(id);
   const input = document.getElementById(`qty-${id}`);
   const p = products.find(x => x.id === id);
   let v = parseInt(input.value) + delta;
   input.value = Math.max(1, Math.min(v, p?.stock || 99));
 }
 function clampQty(id) {
+  id = parseInt(id);
   const input = document.getElementById(`qty-${id}`);
   const p = products.find(x => x.id === id);
   let v = parseInt(input.value) || 1;
@@ -111,6 +114,7 @@ function clampQty(id) {
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────
 function addToCart(productId) {
+  productId = parseInt(productId);
   const p = products.find(x => x.id === productId);
   if (!p) return;
   const qty = parseInt(document.getElementById(`qty-${productId}`)?.value || 1);
@@ -121,9 +125,10 @@ function addToCart(productId) {
   showToast(`✅ เพิ่ม "${p.name}" ลงตะกร้าแล้ว`);
 }
 
-function removeFromCart(id) { cart = cart.filter(c => c.id !== id); saveCart(); renderCart(); }
+function removeFromCart(id) { id = parseInt(id); cart = cart.filter(c => c.id !== id); saveCart(); renderCart(); }
 
 function changeCartQty(id, delta) {
+  id = parseInt(id);
   const item = cart.find(c => c.id === id);
   const p = products.find(x => x.id === id);
   if (!item) return;
