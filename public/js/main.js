@@ -33,7 +33,9 @@ async function loadProducts(search = '') {
   let url = '/api/products?';
   if (currentCategory !== 'all') url += `category=${encodeURIComponent(currentCategory)}&`;
   if (search) url += `search=${encodeURIComponent(search)}`;
-  products = await fetch(url).then(r => r.json());
+  const raw = await fetch(url).then(r => r.json());
+  // Normalize IDs to numbers (PostgreSQL BIGSERIAL returns strings via pg driver)
+  products = raw.map(p => ({ ...p, id: parseInt(p.id) }));
   renderProducts(products);
 }
 
